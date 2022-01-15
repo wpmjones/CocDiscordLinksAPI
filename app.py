@@ -2,6 +2,7 @@ import asyncpg
 import creds
 import jwt
 import re
+import time
 
 from datetime import datetime, timedelta
 from fastapi import FastAPI, Response, status
@@ -21,13 +22,20 @@ class Link(BaseModel):
 class User(BaseModel):
     username: str
     password: str
-    expiry: datetime = None
+    expiry: float = None
 
 
 async def get_jwt(username, expires):
     payload = {"username": username, "expiry": expires}
     logger.info(payload)
     return jwt.encode(payload, creds.jwt_key, algorithm="HS256")
+
+
+def check_expiry(expiry: float):
+    if expiry > time.time():
+        return True
+    else:
+        return False
 
 
 @app.post("/login")
@@ -39,14 +47,16 @@ async def login(user: User, response: Response):
     if not row:
         response.status_code = status.HTTP_401_UNAUTHORIZED
         return "Not a valid user/password combination."
-    if not row[1] or row[1] < datetime.utcnow():
-        # expired or non-existent token
-        user.expiry = datetime.utcnow() + timedelta(hours=2)
-        sql = "UPDATE coc_discord_users SET expiry = $1 WHERE user_id = $2"
-        await conn.execute(sql, user.expiry, row['user_id'])
-    else:
-        # existing token has not expired
-        user.expiry = row['expiry']
+    if row[1]:
+        # value exists in db, test for expiration
+        if check_expiry(user.expiry):
+            # existing token still valid, send to user
+            token = await get_jwt(user.username, user.expiry)
+            return token
+    # either no token exists or it has expired
+    user.expiry = time.time() + 7200.0  # two hours
+    sql = "UPDATE coc_discord_users SET expiry = $1 WHERE user_id = $2"
+    await conn.execute(sql, user.expiry, row['user_id'])
     token = await get_jwt(user.username, user.expiry)
     return token
 
