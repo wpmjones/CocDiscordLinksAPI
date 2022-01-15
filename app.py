@@ -41,11 +41,11 @@ async def get_links(tag_or_id: str):
 
 @app.post("/links", status_code=status.HTTP_200_OK)
 async def add_link(link: Link, response: Response):
-    # conn = await asyncpg.connect(dsn=creds.pg)
-    # sql = "INSERT INTO coc_discord_links (playerTag, discordId) VALUES ($1, $2)"
-    # try:
-    #     await conn.execute(sql, link.playerTag, link.discordId)
-    # except:
-    #     logger.exception("Failure")
-    #     response.status_code = status.HTTP_409_CONFLICT
+    conn = await asyncpg.connect(dsn=creds.pg)
+    sql = "INSERT INTO coc_discord_links (playerTag, discordId) VALUES ($1, $2)"
+    try:
+        await conn.execute(sql, link.playerTag, link.discordId)
+    except:
+        logger.exception("Failure")
+        response.status_code = status.HTTP_409_CONFLICT
     return link
