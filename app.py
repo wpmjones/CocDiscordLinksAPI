@@ -13,7 +13,7 @@ app = FastAPI()
 
 
 class Link(BaseModel):
-    playerTag: str   # = Field(regex="^#?[PYLQGRJCUV0289]+$", description="")
+    playerTag: str = Field(regex="^#?[PYLQGRJCUV0289]+$", description="")
     discordId: int
 
 
@@ -42,7 +42,7 @@ async def get_links(tag_or_id: str):
 @app.post("/links", status_code=status.HTTP_200_OK)
 async def add_link(link: Link, response: Response):
     conn = await asyncpg.connect(dsn=creds.pg)
-    sql = "INSERT INTO coc_discord_links (playerTag, discordId) VALUES ($1, $2)"
+    sql = "INSERT INTO coc_discord_links (playertag, discordid) VALUES ($1, $2)"
     try:
         await conn.execute(sql, link.playerTag, link.discordId)
     except:
