@@ -1,7 +1,9 @@
 import asyncpg
 import creds
+import jwt
 import re
 
+from datetime import datetime, timedelta
 from fastapi import FastAPI, Response, status
 from loguru import logger
 from pydantic import BaseModel
@@ -14,6 +16,34 @@ tag_validator = re.compile("^#?[PYLQGRJCUV0289]+$")
 class Link(BaseModel):
     playerTag: str
     discordId: int
+
+
+class User(BaseModel):
+    username: str
+    password: str
+    expiry: datetime = None
+
+
+@app.post("/login")
+async def login(user: User, response: Response):
+    conn = await asyncpg.connect(dsn=creds.pg)
+    sql = "SELECT user_id, expiry FROM coc_discord_users WHERE username = $1 and password = $2"
+    row = await conn.fetch(sql, user.username, user.password)
+    if not row:
+        response.status_code = status.HTTP_401_UNAUTHORIZED
+        return "Not a valid user/password combination."
+    if not row['expiry'] or row['expiry'] < datetime.utcnow():
+        # no current or expired token
+        user.expiry = datetime.utcnow() + timedelta(hours=2)
+        sql = "UPDATE coc_discord_users SET expiry = $1 WHERE user_id = $2"
+        await conn.execute(sql, user.expiry, row['user_id'])
+    else:
+        # existing token has not expired
+        user.expiry = row['expiry']
+    payload = {"username": user.username, "exp": user.expiry}
+    logger.info(payload)
+    token = jwt.encode(payload, creds.jwt_key, algorithm="HS256")
+    return token
 
 
 @app.get("/links/{tag_or_id}")
@@ -46,11 +76,9 @@ async def get_links(tag_or_id: str, response: Response):
 
 @app.get("/batch")
 async def get_batch(user_input: list, response: Response):
-    logger.info(user_input)
     conn = await asyncpg.connect(dsn=creds.pg)
     tags = []
     for item in user_input:
-        logger.info(item)
         try:
             # Try and convert input to int
             # If successful, it's a Discord ID
