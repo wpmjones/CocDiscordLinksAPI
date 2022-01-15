@@ -4,10 +4,10 @@ import jwt
 import re
 import time
 
-from datetime import datetime, timedelta
-from fastapi import FastAPI, Response, status
+from fastapi import FastAPI, Header, Response, status
 from loguru import logger
 from pydantic import BaseModel
+from typing import Optional
 
 app = FastAPI()
 
@@ -31,6 +31,14 @@ async def get_jwt(username, expires):
     return jwt.encode(payload, creds.jwt_key, algorithm="HS256")
 
 
+async def check_token(token):
+    decoded = jwt.decode(token, creds.jwt_key, algorithms="HS256")
+    if check_expiry(decoded['expiry']):
+        return True
+    else:
+        return False
+
+
 def check_expiry(expiry: float):
     if expiry > time.time():
         return True
@@ -40,20 +48,23 @@ def check_expiry(expiry: float):
 
 @app.post("/login")
 async def login(user: User, response: Response):
+    logger.info(f"Login attempt by: {user.username}")
     conn = await asyncpg.connect(dsn=creds.pg)
     sql = "SELECT user_id, expiry FROM coc_discord_users WHERE username = $1 and passwd = $2"
     row = await conn.fetchrow(sql, user.username, user.password)
-    logger.info(row)
     if not row:
+        logger.warning(f"Login attempt by {user.username} failed. Password provided: {user.password}")
         response.status_code = status.HTTP_401_UNAUTHORIZED
         return "Not a valid user/password combination."
     if row[1]:
         # value exists in db, test for expiration
         if check_expiry(user.expiry):
             # existing token still valid, send to user
+            logger.info("Existing valid token")
             token = await get_jwt(user.username, user.expiry)
             return token
     # either no token exists or it has expired
+    logger.info(f"Creating new token for {user.username}")
     user.expiry = time.time() + 7200.0  # two hours
     sql = "UPDATE coc_discord_users SET expiry = $1 WHERE user_id = $2"
     await conn.execute(sql, user.expiry, row['user_id'])
@@ -62,7 +73,8 @@ async def login(user: User, response: Response):
 
 
 @app.get("/links/{tag_or_id}")
-async def get_links(tag_or_id: str, response: Response):
+async def get_links(tag_or_id: str, response: Response, header: Optional[str] = Header(None)):
+    logger.info(header)
     conn = await asyncpg.connect(dsn=creds.pg)
     tags = []
     try:

@@ -26,15 +26,28 @@ If successful, you will receive a 200 OK message, with your token
 ```
 If not successful, you will receive a 401 Unauthorized message.
 
+**Supplying the token with requests**
+
+You must supply the token with each endpoint request through the header.
+
 **Retrieving the token expiration time**
 
 Tokens are only valid for 2 hours from the time they are issued. Expiration time is stored in UTC as a claim on the token. Below is an example in C# using Jwt.NET of how to obtain the expiration:
 
+**C#**
 ```csharp
 var token = "23jl2k3jh23jKLKk3lh2Kl.A5D46d2312eFealkjkl3Jkl.x923laslkjlKLJlk32lkJlk12jKl3lkjKLJKl1355a";
 var jwt = new JwtBuilder().WithAlgorithm(new HMACSHA256Algorithm())
     .Decode<Dictionary<string, object>>(token);
 var tokenExpireTime = DateTimeOffset.FromUnixTimeSeconds(Convert.ToUInt32(jwt["exp"]));
+```
+
+**Python**
+``` python
+import jwt
+token = "23jl2k3jh23jKLKk3lh2Kl.A5D46d2312eFealkjkl3Jkl.x923laslkjlKLJlk32lkJlk12jKl3lkjKLJKl1355a"
+decoded = jwt.decode(token, options={"verify_signature": False})
+print(decoded['expiry']) 
 ```
 
 ### Retrieving a Link by Player Tag
