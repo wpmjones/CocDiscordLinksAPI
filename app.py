@@ -83,7 +83,8 @@ async def add_link(link: Link, response: Response):
     sql = "INSERT INTO coc_discord_links (playertag, discordid) VALUES ($1, $2)"
     try:
         await conn.execute(sql, link.playerTag, link.discordId)
-    except:
+    except as e:
+        logger.info(e)
         response.status_code = status.HTTP_409_CONFLICT
     await conn.close()
     return
