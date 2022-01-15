@@ -37,9 +37,9 @@ async def get_links(tag_or_id: str, response: Response):
     except ValueError:
         # If it fails, it's a player tag
         if tag_or_id.startswith("#"):
-            player_tag = tag_or_id
+            player_tag = tag_or_id.upper()
         else:
-            player_tag = f"#{tag_or_id}"
+            player_tag = f"#{tag_or_id.upper()}"
         if not tag_validator.match(player_tag):
             response.status_code = status.HTTP_400_BAD_REQUEST
             return "Not a valid player tag. Please use all caps."
@@ -51,6 +51,9 @@ async def get_links(tag_or_id: str, response: Response):
 
 @app.post("/links", status_code=status.HTTP_200_OK)
 async def add_link(link: Link, response: Response):
+    if not tag_validator.match(link.playerTag):
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return "Not a valid player tag. Please use all caps."
     conn = await asyncpg.connect(dsn=creds.pg)
     sql = "INSERT INTO coc_discord_links (playertag, discordid) VALUES ($1, $2)"
     try:
