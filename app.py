@@ -48,4 +48,5 @@ async def add_link(link: Link, response: Response):
     except:
         logger.exception("Failure")
         response.status_code = status.HTTP_409_CONFLICT
+    await conn.close()
     return link
