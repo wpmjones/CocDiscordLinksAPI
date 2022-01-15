@@ -73,8 +73,8 @@ async def login(user: User, response: Response):
 
 
 @app.get("/links/{tag_or_id}")
-async def get_links(tag_or_id: str, response: Response, header: Optional[str] = Header(None)):
-    logger.info(header)
+async def get_links(tag_or_id: str, response: Response, authorization: Optional[str] = Header(None)):
+    logger.info(authorization)
     conn = await asyncpg.connect(dsn=creds.pg)
     tags = []
     try:
