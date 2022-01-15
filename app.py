@@ -24,6 +24,12 @@ class User(BaseModel):
     expiry: datetime = None
 
 
+async def get_jwt(username, expires):
+    payload = {"username": username, "expiry": expires}
+    logger.info(payload)
+    return jwt.encode(payload, creds.jwt_key, algorithm="HS256")
+
+
 @app.post("/login")
 async def login(user: User, response: Response):
     conn = await asyncpg.connect(dsn=creds.pg)
@@ -33,17 +39,20 @@ async def login(user: User, response: Response):
     if not row:
         response.status_code = status.HTTP_401_UNAUTHORIZED
         return "Not a valid user/password combination."
-    if not row['expiry'] or row['expiry'] < datetime.utcnow():
-        # no current or expired token
+    if not row['expiry']:
+        # no current token
+        user.expiry = datetime.utcnow() + timedelta(hours=2)
+        sql = "UPDATE coc_discord_users SET expiry = $1 WHERE user_id = $2"
+        await conn.execute(sql, user.expiry, row['user_id'])
+    elif row['expiry'] < datetime.utcnow():
+        # expired token
         user.expiry = datetime.utcnow() + timedelta(hours=2)
         sql = "UPDATE coc_discord_users SET expiry = $1 WHERE user_id = $2"
         await conn.execute(sql, user.expiry, row['user_id'])
     else:
         # existing token has not expired
         user.expiry = row['expiry']
-    payload = {"username": user.username, "exp": user.expiry}
-    logger.info(payload)
-    token = jwt.encode(payload, creds.jwt_key, algorithm="HS256")
+    token = await get_jwt(user.username, user.expiry)
     return token
 
 
