@@ -70,8 +70,12 @@ async def get_batch(user_input: list, response: Response):
                 return "Not a valid player tag."
             sql = "SELECT discordid FROM coc_discord_links WHERE playertag = $1"
             discord_id = await conn.fetchval(sql, player_tag)
-            tags.append({"playerTag": player_tag, "discordId": discord_id})
+            if discord_id:
+                tags.append({"playerTag": player_tag, "discordId": discord_id})
     await conn.close()
+    if len(tags) == 0:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return
     return tags
 
 
