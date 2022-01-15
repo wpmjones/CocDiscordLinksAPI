@@ -58,3 +58,34 @@ async def add_link(link: Link, response: Response):
         response.status_code = status.HTTP_409_CONFLICT
     await conn.close()
     return
+
+
+@app.delete("/links/{tag_or_id}")
+async def delete_link(tag_or_id: str, response: Response):
+    conn = await asyncpg.connect(dsn=creds.pg)
+    try:
+        # Try and convert input to int
+        # If successful, it's a Discord ID
+        discord_id = int(tag_or_id)
+        sql = "SELECT playertag FROM coc_discord_links WHERE discordid = $1"
+        fetch = await conn.fetch(sql, discord_id)
+        if len(fetch) == 0:
+            response.status_code = status.HTTP_404_NOT_FOUND
+            return "Discord ID not found in database"
+        arg = discord_id
+        sql = "DELETE FROM coc_discord_links WHERE discordid = $1"
+    except ValueError:
+        # If it fails, it's a player tag
+        if tag_or_id.startswith("#"):
+            player_tag = tag_or_id.upper()
+        else:
+            player_tag = f"#{tag_or_id.upper()}"
+        sql = "SELECT discordid FROM coc_discord_links WHERE playertag = $1"
+        fetch = await conn.fetch(sql, player_tag)
+        if len(fetch) == 0:
+            response.status_code = status.HTTP_404_NOT_FOUND
+            return "Player tag not found in database"
+        arg = player_tag
+        sql = "DELETE FROM coc_discord_links WHERE playertag = $1"
+    await conn.execute(sql, arg)
+    return
