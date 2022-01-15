@@ -13,7 +13,7 @@ app = FastAPI()
 
 
 class Link(BaseModel):
-    playerTag: str = Field(regex="^#?[PYLQGRJCUV0289]+$", description="")
+    playerTag: str   # = Field(regex="^#?[PYLQGRJCUV0289]+$", description="")
     discordId: int
 
 
