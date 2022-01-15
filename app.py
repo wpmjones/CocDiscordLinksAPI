@@ -58,6 +58,7 @@ async def login(user: User, response: Response):
         return "Not a valid user/password combination."
     if row[1]:
         # value exists in db, test for expiration
+        user.expiry = row[1]
         if check_expiry(user.expiry):
             # existing token still valid, send to user
             logger.info("Existing valid token")
