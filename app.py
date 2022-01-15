@@ -40,7 +40,7 @@ def check_token(token):
 
 
 def check_expiry(expiry: float):
-    if expiry > time.time():
+    if expiry > time.time() + 7200:
         return True
     else:
         return False
