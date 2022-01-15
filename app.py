@@ -16,17 +16,6 @@ class Link(BaseModel):
     discordId: int
 
 
-@app.get("/")
-async def root():
-
-    conn = await asyncpg.connect(dsn=creds.pg)
-    sql = "INSERT INTO coc_discord_links (playertag, discordid) VALUES ($1, $2)"
-    for x in fred:
-        await conn.execute(sql, x['playerTag'], x['discordId'])
-    await conn.close()
-    return "Success"
-
-
 @app.get("/links/{tag_or_id}")
 async def get_links(tag_or_id: str, response: Response):
     conn = await asyncpg.connect(dsn=creds.pg)
@@ -35,8 +24,10 @@ async def get_links(tag_or_id: str, response: Response):
         # Try and convert input to int
         # If successful, it's a Discord ID
         discord_id = int(tag_or_id)
+        logger.info(discord_id)
         sql = "SELECT playertag FROM coc_discord_links WHERE discordid = $1"
         fetch = await conn.fetch(sql, discord_id)
+        logger.info(fetch)
         for row in fetch:
             tags.append({"playerTag": row[0], "discordId": discord_id})
     except ValueError:
@@ -65,16 +56,5 @@ async def add_link(link: Link, response: Response):
         await conn.execute(sql, link.playerTag, link.discordId)
     except:
         response.status_code = status.HTTP_409_CONFLICT
-    await conn.close()
-    return
-
-
-@app.post("/bulk_insert")
-async def add_all(links: list):
-    logger.info(links)
-    conn = await asyncpg.connect(dsn=creds.pg)
-    sql = "INSERT INTO coc_discord_links (playertag, discordid) VALUES ($1, $2)"
-    for x in links:
-        await conn.execute(sql, x['playerTag'], x['discordId'])
     await conn.close()
     return
