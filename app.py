@@ -2,18 +2,17 @@ import asyncpg
 import creds
 import re
 
-from fastapi import FastAPI, Path, Response, status
+from fastapi import FastAPI, Response, status
 from loguru import logger
-from pydantic import BaseModel, Field
-from typing import Union
+from pydantic import BaseModel
 
 app = FastAPI()
 
-# tag_validator = re.compile("^#?[PYLQGRJCUV0289]+$")
+tag_validator = re.compile("^#?[PYLQGRJCUV0289]+$")
 
 
 class Link(BaseModel):
-    playerTag: str = Field(regex="^#?[PYLQGRJCUV0289]+$", description="")
+    playerTag: str
     discordId: int
 
 
@@ -24,19 +23,30 @@ async def root():
 
 
 @app.get("/links/{tag_or_id}")
-async def get_links(tag_or_id: str):
+async def get_links(tag_or_id: str, response: Response):
+    conn = await asyncpg.connect(dsn=creds.pg)
+    tags = []
     try:
         # Try and convert input to int
         # If successful, it's a Discord ID
-        discordId = int(tag_or_id)
-        playerTag = "blank"
+        discord_id = int(tag_or_id)
+        sql = "SELECT playertag FROM coc_discord_links WHERE discordid = $1"
+        fetch = await conn.fetch(sql, discord_id)
+        for row in fetch:
+            tags.append({"playerTag": row[0], "discordId": discord_id})
     except ValueError:
         # If it fails, it's a player tag
-        playerTag = tag_or_id
-        discordId = 0
-        logger.info(playerTag)
-    response = Link(playerTag=playerTag, discordId=discordId)
-    return response
+        if tag_or_id.startswith("#"):
+            player_tag = tag_or_id
+        else:
+            player_tag = f"#{tag_or_id}"
+        if not tag_validator.match(player_tag):
+            response.status_code = status.HTTP_400_BAD_REQUEST
+            return "Not a valid player tag. Please use all caps."
+        sql = "SELECT discordid FROM coc_discord_links WHERE playertag = $1"
+        discord_id = await conn.fetchval(sql, player_tag)
+        tags.append({"playerTag": player_tag, "discordId": discord_id})
+    return tags
 
 
 @app.post("/links", status_code=status.HTTP_200_OK)
@@ -46,7 +56,6 @@ async def add_link(link: Link, response: Response):
     try:
         await conn.execute(sql, link.playerTag, link.discordId)
     except:
-        logger.exception("Failure")
         response.status_code = status.HTTP_409_CONFLICT
     await conn.close()
-    return link
+    return
