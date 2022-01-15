@@ -73,8 +73,10 @@ async def login(user: User, response: Response):
 
 
 @app.get("/links/{tag_or_id}")
-async def get_links(tag_or_id: str, response: Response, authorization: Optional[str] = Header(None)):
-    logger.info(authorization)
+async def get_links(tag_or_id: str, response: Response, authorization: Header(None)):
+    if not check_token(authorization[7:]):
+        response.status_code = status.HTTP_401_UNAUTHORIZED
+        return "Token is invalid"
     conn = await asyncpg.connect(dsn=creds.pg)
     tags = []
     try:
@@ -102,7 +104,10 @@ async def get_links(tag_or_id: str, response: Response, authorization: Optional[
 
 
 @app.get("/batch")
-async def get_batch(user_input: list, response: Response):
+async def get_batch(user_input: list, response: Response, authorization: Header(None)):
+    if not check_token(authorization[7:]):
+        response.status_code = status.HTTP_401_UNAUTHORIZED
+        return "Token is invalid"
     conn = await asyncpg.connect(dsn=creds.pg)
     tags = []
     for item in user_input:
@@ -135,7 +140,10 @@ async def get_batch(user_input: list, response: Response):
 
 
 @app.post("/links", status_code=status.HTTP_200_OK)
-async def add_link(link: Link, response: Response):
+async def add_link(link: Link, response: Response, authorization: Header(None)):
+    if not check_token(authorization[7:]):
+        response.status_code = status.HTTP_401_UNAUTHORIZED
+        return "Token is invalid"
     if not tag_validator.match(link.playerTag):
         response.status_code = status.HTTP_400_BAD_REQUEST
         return "Not a valid player tag."
@@ -152,7 +160,10 @@ async def add_link(link: Link, response: Response):
 
 
 @app.delete("/links/{tag_or_id}")
-async def delete_link(tag: str, response: Response):
+async def delete_link(tag: str, response: Response, authorization: Header(None)):
+    if not check_token(authorization[7:]):
+        response.status_code = status.HTTP_401_UNAUTHORIZED
+        return "Token is invalid"
     conn = await asyncpg.connect(dsn=creds.pg)
     if tag.startswith("#"):
         player_tag = tag.upper()
