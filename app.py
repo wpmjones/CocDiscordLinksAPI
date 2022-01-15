@@ -25,7 +25,7 @@ class User(BaseModel):
     expiry: float = None
 
 
-async def get_jwt(username, expires):
+def get_jwt(username, expires):
     payload = {"username": username, "expiry": expires}
     logger.info(payload)
     return jwt.encode(payload, creds.jwt_key, algorithm="HS256")
@@ -61,14 +61,14 @@ async def login(user: User, response: Response):
         if check_expiry(user.expiry):
             # existing token still valid, send to user
             logger.info("Existing valid token")
-            token = await get_jwt(user.username, user.expiry)
+            token = get_jwt(user.username, user.expiry)
             return token
     # either no token exists or it has expired
     logger.info(f"Creating new token for {user.username}")
     user.expiry = time.time() + 7200.0  # two hours
     sql = "UPDATE coc_discord_users SET expiry = $1 WHERE user_id = $2"
     await conn.execute(sql, user.expiry, row['user_id'])
-    token = await get_jwt(user.username, user.expiry)
+    token = get_jwt(user.username, user.expiry)
     return token
 
 
