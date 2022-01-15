@@ -40,7 +40,7 @@ def check_token(token):
 
 
 def check_expiry(expiry: float):
-    if expiry > time.time() + 7200:
+    if expiry > time.time():
         return True
     else:
         return False
@@ -50,7 +50,7 @@ def check_expiry(expiry: float):
 async def login(user: User, response: Response):
     logger.info(f"Login attempt by: {user.username}")
     conn = await asyncpg.connect(dsn=creds.pg)
-    sql = "SELECT user_id, expiry FROM coc_discord_users WHERE username = $1 and passwd = $2"
+    sql = "SELECT user_id, expiry FROM coc_discord_users WHERE username = $1 and passwd = $2 and approved = True"
     row = await conn.fetchrow(sql, user.username, user.password)
     if not row:
         logger.warning(f"Login attempt by {user.username} failed. Password provided: {user.password}")
