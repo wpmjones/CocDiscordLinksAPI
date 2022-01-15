@@ -71,6 +71,7 @@ async def add_link(link: Link, response: Response):
 
 @app.post("/bulk_insert")
 async def add_all(links):
+    logger.info(links)
     conn = await asyncpg.connect(dsn=creds.pg)
     sql = "INSERT INTO coc_discord_links (playertag, discordid) VALUES ($1, $2)"
     for x in links:
