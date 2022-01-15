@@ -18,9 +18,6 @@ class Link(BaseModel):
 
 @app.get("/links/{tag_or_id}")
 async def get_links(tag_or_id: str, response: Response):
-    if tag_or_id.lower() == "batch":
-        resp = await get_batch(tag_or_id)
-        return resp
     conn = await asyncpg.connect(dsn=creds.pg)
     tags = []
     try:
@@ -47,7 +44,8 @@ async def get_links(tag_or_id: str, response: Response):
     return tags
 
 
-async def get_batch(user_input):
+@app.get("/batch")
+async def get_batch(user_input: list, response: Response):
     logger.info(user_input)
     conn = await asyncpg.connect(dsn=creds.pg)
     tags = []
@@ -67,6 +65,9 @@ async def get_batch(user_input):
                 player_tag = item.upper()
             else:
                 player_tag = f"#{item.upper()}"
+            if not tag_validator.match(player_tag):
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return "Not a valid player tag."
             sql = "SELECT discordid FROM coc_discord_links WHERE playertag = $1"
             discord_id = await conn.fetchval(sql, player_tag)
             tags.append({"playerTag": player_tag, "discordId": discord_id})
