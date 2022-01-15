@@ -31,7 +31,7 @@ async def get_jwt(username, expires):
     return jwt.encode(payload, creds.jwt_key, algorithm="HS256")
 
 
-async def check_token(token):
+def check_token(token):
     decoded = jwt.decode(token, creds.jwt_key, algorithms="HS256")
     if check_expiry(decoded['expiry']):
         return True
