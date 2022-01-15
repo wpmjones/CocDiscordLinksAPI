@@ -49,6 +49,7 @@ async def get_batch(user_input: list, response: Response):
     conn = await asyncpg.connect(dsn=creds.pg)
     tags = []
     for item in user_input:
+        logger.info(item)
         try:
             # Try and convert input to int
             # If successful, it's a Discord ID
