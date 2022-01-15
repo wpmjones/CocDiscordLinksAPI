@@ -46,6 +46,7 @@ async def get_links(tag_or_id: str, response: Response):
 
 @app.get("/links/batch")
 async def get_batch(user_input: list, response: Response):
+    logger.info(user_input)
     conn = await asyncpg.connect(dsn=creds.pg)
     tags = []
     for item in user_input:
