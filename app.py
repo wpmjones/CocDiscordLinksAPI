@@ -24,10 +24,8 @@ async def get_links(tag_or_id: str, response: Response):
         # Try and convert input to int
         # If successful, it's a Discord ID
         discord_id = int(tag_or_id)
-        logger.info(discord_id)
         sql = "SELECT playertag FROM coc_discord_links WHERE discordid = $1"
         fetch = await conn.fetch(sql, discord_id)
-        logger.info(fetch)
         for row in fetch:
             tags.append({"playerTag": row[0], "discordId": discord_id})
     except ValueError:
@@ -42,6 +40,36 @@ async def get_links(tag_or_id: str, response: Response):
         sql = "SELECT discordid FROM coc_discord_links WHERE playertag = $1"
         discord_id = await conn.fetchval(sql, player_tag)
         tags.append({"playerTag": player_tag, "discordId": discord_id})
+    await conn.close()
+    return tags
+
+
+@app.get("/links/batch")
+async def get_batch(user_input: list, response: Response):
+    conn = await asyncpg.connect(dsn=creds.pg)
+    tags = []
+    for item in user_input:
+        try:
+            # Try and convert input to int
+            # If successful, it's a Discord ID
+            discord_id = int(item)
+            sql = "SELECT playertag FROM coc_discord_links WHERE discordid = $1"
+            fetch = await conn.fetch(sql, discord_id)
+            for row in fetch:
+                tags.append({"playerTag": row[0], "discordId": discord_id})
+        except ValueError:
+            # If it fails, it's a player tag
+            if item.startswith("#"):
+                player_tag = item.upper()
+            else:
+                player_tag = f"#{item.upper()}"
+            if not tag_validator.match(player_tag):
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return "Not a valid player tag."
+            sql = "SELECT discordid FROM coc_discord_links WHERE playertag = $1"
+            discord_id = await conn.fetchval(sql, player_tag)
+            tags.append({"playerTag": player_tag, "discordId": discord_id})
+    await conn.close()
     return tags
 
 
@@ -61,31 +89,18 @@ async def add_link(link: Link, response: Response):
 
 
 @app.delete("/links/{tag_or_id}")
-async def delete_link(tag_or_id: str, response: Response):
+async def delete_link(tag: str, response: Response):
     conn = await asyncpg.connect(dsn=creds.pg)
-    try:
-        # Try and convert input to int
-        # If successful, it's a Discord ID
-        discord_id = int(tag_or_id)
-        sql = "SELECT playertag FROM coc_discord_links WHERE discordid = $1"
-        fetch = await conn.fetch(sql, discord_id)
-        if len(fetch) == 0:
-            response.status_code = status.HTTP_404_NOT_FOUND
-            return "Discord ID not found in database"
-        arg = discord_id
-        sql = "DELETE FROM coc_discord_links WHERE discordid = $1"
-    except ValueError:
-        # If it fails, it's a player tag
-        if tag_or_id.startswith("#"):
-            player_tag = tag_or_id.upper()
-        else:
-            player_tag = f"#{tag_or_id.upper()}"
-        sql = "SELECT discordid FROM coc_discord_links WHERE playertag = $1"
-        fetch = await conn.fetch(sql, player_tag)
-        if len(fetch) == 0:
-            response.status_code = status.HTTP_404_NOT_FOUND
-            return "Player tag not found in database"
-        arg = player_tag
-        sql = "DELETE FROM coc_discord_links WHERE playertag = $1"
-    await conn.execute(sql, arg)
+    if tag.startswith("#"):
+        player_tag = tag.upper()
+    else:
+        player_tag = f"#{tag.upper()}"
+    sql = "SELECT discordid FROM coc_discord_links WHERE playertag = $1"
+    fetch = await conn.fetch(sql, player_tag)
+    if len(fetch) == 0:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return "Player tag not found in database"
+    sql = "DELETE FROM coc_discord_links WHERE playertag = $1"
+    await conn.execute(sql, player_tag)
+    await conn.close()
     return
