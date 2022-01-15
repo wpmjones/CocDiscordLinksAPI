@@ -39,13 +39,8 @@ async def login(user: User, response: Response):
     if not row:
         response.status_code = status.HTTP_401_UNAUTHORIZED
         return "Not a valid user/password combination."
-    if not row['expiry']:
-        # no current token
-        user.expiry = datetime.utcnow() + timedelta(hours=2)
-        sql = "UPDATE coc_discord_users SET expiry = $1 WHERE user_id = $2"
-        await conn.execute(sql, user.expiry, row['user_id'])
-    elif row['expiry'] < datetime.utcnow():
-        # expired token
+    if not row[1] or row[1] < datetime.utcnow():
+        # expired or non-existent token
         user.expiry = datetime.utcnow() + timedelta(hours=2)
         sql = "UPDATE coc_discord_users SET expiry = $1 WHERE user_id = $2"
         await conn.execute(sql, user.expiry, row['user_id'])
