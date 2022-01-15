@@ -2,6 +2,7 @@ import asyncpg
 import creds
 import re
 
+from temp import fred
 from fastapi import FastAPI, Response, status
 from loguru import logger
 from pydantic import BaseModel
@@ -18,8 +19,12 @@ class Link(BaseModel):
 
 @app.get("/")
 async def root():
-    logger.info("Hello world")
-    return {"message": "Hello world"}
+    conn = await asyncpg.connect(dsn=creds.pg)
+    sql = "INSERT INTO coc_discord_links (playertag, discordid) VALUES ($1, $2)"
+    for x in fred:
+        await conn.execute(sql, x['playerTag'], x['discordId'])
+    await conn.close()
+    return "Success"
 
 
 @app.get("/links/{tag_or_id}")
@@ -42,7 +47,7 @@ async def get_links(tag_or_id: str, response: Response):
             player_tag = f"#{tag_or_id.upper()}"
         if not tag_validator.match(player_tag):
             response.status_code = status.HTTP_400_BAD_REQUEST
-            return "Not a valid player tag. Please use all caps."
+            return "Not a valid player tag."
         sql = "SELECT discordid FROM coc_discord_links WHERE playertag = $1"
         discord_id = await conn.fetchval(sql, player_tag)
         tags.append({"playerTag": player_tag, "discordId": discord_id})
@@ -53,7 +58,7 @@ async def get_links(tag_or_id: str, response: Response):
 async def add_link(link: Link, response: Response):
     if not tag_validator.match(link.playerTag):
         response.status_code = status.HTTP_400_BAD_REQUEST
-        return "Not a valid player tag. Please use all caps."
+        return "Not a valid player tag."
     conn = await asyncpg.connect(dsn=creds.pg)
     sql = "INSERT INTO coc_discord_links (playertag, discordid) VALUES ($1, $2)"
     try:
