@@ -33,8 +33,8 @@ async def get_jwt(username, expires):
 @app.post("/login")
 async def login(user: User, response: Response):
     conn = await asyncpg.connect(dsn=creds.pg)
-    sql = "SELECT user_id, expiry FROM coc_discord_users WHERE username = $1 and password = $2"
-    row = await conn.fetch(sql, user.username, user.password)
+    sql = "SELECT user_id, expiry FROM coc_discord_users WHERE username = $1 and passwd = $2"
+    row = await conn.fetchrow(sql, user.username, user.password)
     logger.info(row)
     if not row:
         response.status_code = status.HTTP_401_UNAUTHORIZED
