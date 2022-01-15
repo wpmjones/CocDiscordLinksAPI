@@ -2,7 +2,6 @@ import asyncpg
 import creds
 import re
 
-from temp import fred
 from fastapi import FastAPI, Response, status
 from loguru import logger
 from pydantic import BaseModel
@@ -19,6 +18,7 @@ class Link(BaseModel):
 
 @app.get("/")
 async def root():
+
     conn = await asyncpg.connect(dsn=creds.pg)
     sql = "INSERT INTO coc_discord_links (playertag, discordid) VALUES ($1, $2)"
     for x in fred:
@@ -65,5 +65,15 @@ async def add_link(link: Link, response: Response):
         await conn.execute(sql, link.playerTag, link.discordId)
     except:
         response.status_code = status.HTTP_409_CONFLICT
+    await conn.close()
+    return
+
+
+@app.post("/bulk_insert")
+async def add_all(links):
+    conn = await asyncpg.connect(dsn=creds.pg)
+    sql = "INSERT INTO coc_discord_links (playertag, discordid) VALUES ($1, $2)"
+    for x in links:
+        await conn.execute(sql, x['playerTag'], x['discordId'])
     await conn.close()
     return
