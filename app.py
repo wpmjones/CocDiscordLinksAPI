@@ -15,8 +15,8 @@ tag_validator = re.compile("^#?[PYLQGRJCUV0289]+$")
 
 
 class Link(BaseModel):
-    player_tag: str
-    discord_id: int
+    playerTag: str
+    discordId: int
 
 
 class User(BaseModel):
@@ -154,13 +154,13 @@ async def add_link(link: Link, response: Response, authorization: Optional[str] 
     if not check_token(authorization[7:]):
         response.status_code = status.HTTP_401_UNAUTHORIZED
         return "Token is invalid"
-    if not tag_validator.match(link.player_tag):
+    if not tag_validator.match(link.playerTag):
         response.status_code = status.HTTP_400_BAD_REQUEST
         return "Not a valid player tag."
     conn = await asyncpg.connect(dsn=creds.pg)
     sql = "INSERT INTO coc_discord_links (playertag, discordid) VALUES ($1, $2)"
     try:
-        await conn.execute(sql, link.player_tag, link.discord_id)
+        await conn.execute(sql, link.playerTag, link.discordId)
     except asyncpg.exceptions.UniqueViolationError:
         response.status_code = status.HTTP_409_CONFLICT
     except:
@@ -171,7 +171,7 @@ async def add_link(link: Link, response: Response, authorization: Optional[str] 
     sql = "SELECT user_id FROM coc_discord_users WHERE username = $1"
     user_id = await conn.fetchval(sql, username)
     sql = "INSERT INTO coc_discord_log (user_id, activity, playertag) VALUES ($1, $2, $3)"
-    await conn.execute(sql, user_id, "ADD", link.player_tag)
+    await conn.execute(sql, user_id, "ADD", link.playerTag)
     await conn.close()
     return
 
