@@ -27,7 +27,6 @@ class User(BaseModel):
 
 def get_jwt(username, expires):
     payload = {"username": username, "expiry": expires}
-    logger.info(payload)
     return jwt.encode(payload, creds.jwt_key, algorithm="HS256")
 
 
@@ -44,6 +43,11 @@ def check_expiry(expiry: float):
         return True
     else:
         return False
+
+
+@app.get("/")
+async def index():
+    return {"message": "Hello world!"}
 
 
 @app.post("/login")
