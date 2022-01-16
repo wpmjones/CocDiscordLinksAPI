@@ -15,8 +15,8 @@ tag_validator = re.compile("^#?[PYLQGRJCUV0289]+$")
 
 
 class Link(BaseModel):
-    playerTag: str
-    discordId: int
+    player_tag: str
+    discord_id: int
 
 
 class User(BaseModel):
@@ -28,6 +28,11 @@ class User(BaseModel):
 def get_jwt(username, expires):
     payload = {"username": username, "expiry": expires}
     return jwt.encode(payload, creds.jwt_key, algorithm="HS256")
+
+
+def decode_jwt(token):
+    decoded = jwt.decode(token, creds.jwt_key, algorithms="HS256")
+    return decoded
 
 
 def check_token(token):
@@ -149,17 +154,24 @@ async def add_link(link: Link, response: Response, authorization: Optional[str] 
     if not check_token(authorization[7:]):
         response.status_code = status.HTTP_401_UNAUTHORIZED
         return "Token is invalid"
-    if not tag_validator.match(link.playerTag):
+    if not tag_validator.match(link.player_tag):
         response.status_code = status.HTTP_400_BAD_REQUEST
         return "Not a valid player tag."
     conn = await asyncpg.connect(dsn=creds.pg)
     sql = "INSERT INTO coc_discord_links (playertag, discordid) VALUES ($1, $2)"
     try:
-        await conn.execute(sql, link.playerTag, link.discordId)
+        await conn.execute(sql, link.player_tag, link.discord_id)
     except asyncpg.exceptions.UniqueViolationError:
         response.status_code = status.HTTP_409_CONFLICT
     except:
         response.status_code = status.HTTP_400_BAD_REQUEST
+    # Logging
+    jwt_payload = decode_jwt(authorization[7:])
+    username = jwt_payload['username']
+    sql = "SELECT user_id FROM coc_discord_users WHERE username = $1"
+    user_id = await conn.fetchval(sql, username)
+    sql = "INSERT INTO coc_discord_log (user_id, activity, playertag) VALUES ($1, $2, $3)"
+    await conn.execute(sql, user_id, "ADD", link.player_tag)
     await conn.close()
     return
 
@@ -181,5 +193,12 @@ async def delete_link(tag: str, response: Response, authorization: Optional[str]
         return "Player tag not found in database"
     sql = "DELETE FROM coc_discord_links WHERE playertag = $1"
     await conn.execute(sql, player_tag)
+    # Logging
+    jwt_payload = decode_jwt(authorization[7:])
+    username = jwt_payload['username']
+    sql = "SELECT user_id FROM coc_discord_users WHERE username = $1"
+    user_id = await conn.fetchval(sql, username)
+    sql = "INSERT INTO coc_discord_log (user_id, activity, playertag) VALUES ($1, $2, $3)"
+    await conn.execute(sql, user_id, "DELETE", player_tag)
     await conn.close()
     return
