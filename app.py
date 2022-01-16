@@ -164,7 +164,7 @@ async def add_link(link: Link, response: Response, authorization: Optional[str] 
     return
 
 
-@app.delete("/links/{tag_or_id}")
+@app.delete("/links/{tag}")
 async def delete_link(tag: str, response: Response, authorization: Optional[str] = Header(None)):
     if not check_token(authorization[7:]):
         response.status_code = status.HTTP_401_UNAUTHORIZED

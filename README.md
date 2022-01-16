@@ -30,6 +30,10 @@ If not successful, you will receive a 401 Unauthorized message.
 
 You must supply the token with each endpoint request through the header.
 
+```
+Authorization: Bearer 23jl2k3jh23jKLKk3lh2Kl.A5D46d2312eFealkjkl3Jkl.x923laslkjlKLJlk32lkJlk12jKl3lkjKLJKl1355a
+```
+
 **Retrieving the token expiration time**
 
 Tokens are only valid for 2 hours from the time they are issued. Expiration time is stored in UTC as a claim on the token. Below is an example in C# using Jwt.NET of how to obtain the expiration:
@@ -51,7 +55,7 @@ print(decoded['expiry'])
 ```
 
 ### Retrieving a Link by Player Tag
-GET - https://cocdiscordlink.azurewebsites.net/api/links/{tag}
+GET - http://cocdiscord.link/links/{tag}
 
 *Note: You do not need to include the # in the query, but if you do, be sure to encode it to %23*
 
@@ -71,7 +75,7 @@ Returns:
 ```
 
 ### Retrieving a Link by DiscordId
-GET - https://cocdiscordlink.azurewebsites.net/api/links/{id}
+GET - http://cocdiscord.link/links/{id}
 
 Example(s):
 ```
@@ -86,9 +90,13 @@ Returns:
     }
 ]
 ```
+**Return Values**  
+Success: 200 OK  
+Invalid tag: 400 Bad Request  
+No records: 404 Not Found  
 
 ### Retrieving Multiples in Batch
-POST - https://cocdiscordlink.azurewebsites.net/api/links/batch
+GET - http://cocdiscord.link/batch
 
 *Note: This payload can take both DiscordIds and Player Tags both, and they can be mix-and-matched, as in the example below:*
 
@@ -114,12 +122,13 @@ Results Example:
     }    
 ]
 ```
-**Return Values**
-Success: 200 OK 
+**Return Values**  
+Success: 200 OK  
+Invalid tag: 400 Bad Request  
 No records: 404 Not Found
 
 ### Adding a New Link
-POST - https://cocdiscordlink.azurewebsites.net/api/links
+POST - http://cocdiscord.link/links
 
 Payload Example: 
 ```json
@@ -129,12 +138,13 @@ Payload Example:
 }
 ```
 
-**Return Values:**
-Successful result: 200 OK
+**Return Values:**  
+Successful result: 200 OK  
+Invalid tag: 400 Bad Request  
 Player already exists: 409 Conflict
 
 ### Deleting an Existing Link
-DELETE - https://cocdiscordlink.azurewebsites.net/api/links/{tag}
+DELETE - http://cocdiscord.link/links/{tag}
 
 *Note: This only works on Clash of Clans Player Tags*
 
@@ -144,6 +154,6 @@ https://cocdiscordlink.azurewebsites.net/api/links/RQ33GCCG (no #)
 https://cocdiscordlink.azurewebsites.net/api/links/%23RQ33GCCG (# is encoded)
 ```
 
-**Return Values:**
-Success: 200 OK
+**Return Values:**  
+Success: 200 OK  
 Player does not exist: 404 Not Found
