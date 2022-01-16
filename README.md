@@ -3,12 +3,12 @@
 ## About
 CocDiscordLinkAPI is a service created for Clash of Clans Discord bot developers. The purpose is to be a central repository for links between Clash of Clans player accounts and their Discord account. 
 
-This is a REST-based service, hosted in PYthon. It requires a username/password to use. To request a login, join the Clash API Developers server and send a message in #coc-discord-link-api. Click here to join: https://discord.gg/clashapi
+This is a REST-based service, hosted in Python. It requires a username/password to use. To request a login, join the Clash API Developers server and send a message in #coc-discord-link-api. Click here to join: https://discord.gg/clashapi
 
 ## Using the Service
 
 ### Authentication
-POST - https://cocdiscordlink.azurewebsites.net/api/login
+POST - http://cocdiscord.link/login
 
 Payload Example:
 ```json
@@ -61,8 +61,8 @@ GET - http://cocdiscord.link/links/{tag}
 
 Example(s):
 ```
-https://cocdiscordlink.azurewebsites.net/api/links/RQ33GCCG (no #)
-https://cocdiscordlink.azurewebsites.net/api/links/%23RQ33GCCG (# is encoded)
+http://cocdiscord.link/links/RQ33GCCG (no #)
+http://cocdiscord.link/links/%23RQ33GCCG (# is encoded)
 ```
 Returns:
 ```json
@@ -79,7 +79,7 @@ GET - http://cocdiscord.link/links/{id}
 
 Example(s):
 ```
-https://cocdiscordlink.azurewebsites.net/api/links/658256846652301451
+http://cocdiscord.link/links/658256846652301451
 ```
 Returns:
 ```json
@@ -150,8 +150,8 @@ DELETE - http://cocdiscord.link/links/{tag}
 
 Example(s):
 ```
-https://cocdiscordlink.azurewebsites.net/api/links/RQ33GCCG (no #)
-https://cocdiscordlink.azurewebsites.net/api/links/%23RQ33GCCG (# is encoded)
+http://cocdiscord.link/links/RQ33GCCG (no #)
+http://cocdiscord.link/links/%23RQ33GCCG (# is encoded)
 ```
 
 **Return Values:**  
