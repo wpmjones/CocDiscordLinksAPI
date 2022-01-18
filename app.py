@@ -64,7 +64,7 @@ async def login(user: User, response: Response):
     if not row:
         logger.warning(f"Login attempt by {user.username} failed. Password provided: {user.password}")
         response.status_code = status.HTTP_401_UNAUTHORIZED
-        return "Not a valid user/password combination."
+        return {"Error message": "Not a valid user/password combination."}
     if row[1]:
         # value exists in db, test for expiration
         user.expiry = row[1]
@@ -72,21 +72,21 @@ async def login(user: User, response: Response):
             # existing token still valid, send to user
             logger.info("Existing valid token")
             token = get_jwt(user.username, user.expiry)
-            return token
+            return {"token": token}
     # either no token exists or it has expired
     logger.info(f"Creating new token for {user.username}")
     user.expiry = time.time() + 7200.0  # two hours
     sql = "UPDATE coc_discord_users SET expiry = $1 WHERE user_id = $2"
     await conn.execute(sql, user.expiry, row['user_id'])
-    jwt_token = get_jwt(user.username, user.expiry)
-    return {"token": jwt_token}
+    token = get_jwt(user.username, user.expiry)
+    return {"token": token}
 
 
 @app.get("/links/{tag_or_id}")
 async def get_links(tag_or_id: str, response: Response, authorization: Optional[str] = Header(None)):
     if not check_token(authorization[7:]):
         response.status_code = status.HTTP_401_UNAUTHORIZED
-        return "Token is invalid"
+        return {"Error message": "Token is invalid"}
     conn = await asyncpg.connect(dsn=creds.pg)
     tags = []
     try:
@@ -105,7 +105,7 @@ async def get_links(tag_or_id: str, response: Response, authorization: Optional[
             player_tag = f"#{tag_or_id.upper()}"
         if not tag_validator.match(player_tag):
             response.status_code = status.HTTP_400_BAD_REQUEST
-            return "Not a valid player tag."
+            return {"Error message": "Not a valid player tag."}
         sql = "SELECT discordid FROM coc_discord_links WHERE playertag = $1"
         discord_id = await conn.fetchval(sql, player_tag)
         tags.append({"playerTag": player_tag, "discordId": discord_id})
@@ -117,7 +117,7 @@ async def get_links(tag_or_id: str, response: Response, authorization: Optional[
 async def get_batch(user_input: list, response: Response, authorization: Optional[str] = Header(None)):
     if not check_token(authorization[7:]):
         response.status_code = status.HTTP_401_UNAUTHORIZED
-        return "Token is invalid"
+        return {"Error message": "Token is invalid"}
     conn = await asyncpg.connect(dsn=creds.pg)
     tags = []
     for item in user_input:
@@ -137,7 +137,7 @@ async def get_batch(user_input: list, response: Response, authorization: Optiona
                 player_tag = f"#{item.upper()}"
             if not tag_validator.match(player_tag):
                 response.status_code = status.HTTP_400_BAD_REQUEST
-                return "Not a valid player tag."
+                return {"Error message": "Not a valid player tag."}
             sql = "SELECT discordid FROM coc_discord_links WHERE playertag = $1"
             discord_id = await conn.fetchval(sql, player_tag)
             if discord_id:
@@ -145,7 +145,7 @@ async def get_batch(user_input: list, response: Response, authorization: Optiona
     await conn.close()
     if len(tags) == 0:
         response.status_code = status.HTTP_404_NOT_FOUND
-        return
+        return {"Error message": "No matches found"}
     return tags
 
 
@@ -156,7 +156,7 @@ async def add_link(link: Link, response: Response, authorization: Optional[str] 
         return "Token is invalid"
     if not tag_validator.match(link.playerTag):
         response.status_code = status.HTTP_400_BAD_REQUEST
-        return "Not a valid player tag."
+        return {"Error message": "Not a valid player tag."}
     conn = await asyncpg.connect(dsn=creds.pg)
     sql = "INSERT INTO coc_discord_links (playertag, discordid) VALUES ($1, $2)"
     try:
