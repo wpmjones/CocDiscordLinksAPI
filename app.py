@@ -14,10 +14,6 @@ app = FastAPI()
 tag_validator = re.compile("^#?[PYLQGRJCUV0289]+$")
 
 
-class Login(BaseModel):
-    token: str
-
-
 class Link(BaseModel):
     playerTag: str
     discordId: int
@@ -83,9 +79,7 @@ async def login(user: User, response: Response):
     sql = "UPDATE coc_discord_users SET expiry = $1 WHERE user_id = $2"
     await conn.execute(sql, user.expiry, row['user_id'])
     jwt_token = get_jwt(user.username, user.expiry)
-    logger.info(jwt_token)
-    token = Login(jwt_token)
-    return token
+    return {"token": jwt_token}
 
 
 @app.get("/links/{tag_or_id}")
