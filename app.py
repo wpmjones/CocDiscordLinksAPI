@@ -37,9 +37,12 @@ def decode_jwt(token):
 
 def check_token(token):
     try:
+        logger.info("Checking token")
         jwt.decode(token, creds.jwt_key, algorithms="HS256")
+        logger.info("Token passed")
         return True
     except jwt.ExpiredSignatureError:
+        logger.info("Token failed")
         return False
 
 
