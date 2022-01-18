@@ -129,7 +129,11 @@ async def get_batch(user_input: list, response: Response, authorization: Optiona
                 player_tag = f"#{tag_or_id.upper()}"
             tags.append(player_tag)
         else:
-            ids.append(int(tag_or_id))
+            try:
+                ids.append(int(tag_or_id))
+            except ValueError:
+                # not a valid player tag or discord ID
+                pass
     pairs = []
     tag_sql = "SELECT playertag, discordid FROM coc_discord_links WHERE playertag = any($1::text[])"
     id_sql = "SELECT playertag, discordid FROM coc_discord_links WHERE discordid = any($1::bigint[])"
