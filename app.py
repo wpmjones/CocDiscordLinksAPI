@@ -26,7 +26,7 @@ class User(BaseModel):
 
 
 def get_jwt(username, expires):
-    payload = {"username": username, "expiry": expires}
+    payload = {"username": username, "exp": expires}
     return jwt.encode(payload, creds.jwt_key, algorithm="HS256")
 
 
@@ -36,10 +36,10 @@ def decode_jwt(token):
 
 
 def check_token(token):
-    decoded = jwt.decode(token, creds.jwt_key, algorithms="HS256")
-    if check_expiry(decoded['expiry']):
+    try:
+        jwt.decode(token, creds.jwt_key, algorithms="HS256")
         return True
-    else:
+    except jwt.ExpiredSignatureError:
         return False
 
 
