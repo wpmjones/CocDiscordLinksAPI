@@ -82,7 +82,9 @@ async def login(user: User, response: Response):
     user.expiry = time.time() + 7200.0  # two hours
     sql = "UPDATE coc_discord_users SET expiry = $1 WHERE user_id = $2"
     await conn.execute(sql, user.expiry, row['user_id'])
-    token = Login(get_jwt(user.username, user.expiry))
+    jwt_token = get_jwt(user.username, user.expiry)
+    logger.info(jwt_token)
+    token = Login(jwt_token)
     return token
 
 
