@@ -96,7 +96,7 @@ async def get_links(tag_or_id: str, response: Response, authorization: Optional[
         sql = "SELECT playertag FROM coc_discord_links WHERE discordid = $1"
         fetch = await conn.fetch(sql, discord_id)
         for row in fetch:
-            tags.append({"playerTag": row[0], "discordId": discord_id})
+            tags.append({"playerTag": row[0], "discordId": str(discord_id)})
     except ValueError:
         # If it fails, it's a player tag
         if tag_or_id.startswith("#"):
@@ -108,12 +108,12 @@ async def get_links(tag_or_id: str, response: Response, authorization: Optional[
             return {"Error message": "Not a valid player tag."}
         sql = "SELECT discordid FROM coc_discord_links WHERE playertag = $1"
         discord_id = await conn.fetchval(sql, player_tag)
-        tags.append({"playerTag": player_tag, "discordId": discord_id})
+        tags.append({"playerTag": player_tag, "discordId": str(discord_id)})
     await conn.close()
     return tags
 
 
-@app.get("/batch")
+@app.post("/batch")
 async def get_batch(user_input: list, response: Response, authorization: Optional[str] = Header(None)):
     if not check_token(authorization[7:]):
         response.status_code = status.HTTP_401_UNAUTHORIZED
@@ -128,7 +128,7 @@ async def get_batch(user_input: list, response: Response, authorization: Optiona
             sql = "SELECT playertag FROM coc_discord_links WHERE discordid = $1"
             fetch = await conn.fetch(sql, discord_id)
             for row in fetch:
-                tags.append({"playerTag": row[0], "discordId": discord_id})
+                tags.append({"playerTag": row[0], "discordId": str(discord_id)})
         except ValueError:
             # If it fails, it's a player tag
             if item.startswith("#"):
@@ -141,7 +141,7 @@ async def get_batch(user_input: list, response: Response, authorization: Optiona
             sql = "SELECT discordid FROM coc_discord_links WHERE playertag = $1"
             discord_id = await conn.fetchval(sql, player_tag)
             if discord_id:
-                tags.append({"playerTag": player_tag, "discordId": discord_id})
+                tags.append({"playerTag": player_tag, "discordId": str(discord_id)})
     await conn.close()
     if len(tags) == 0:
         response.status_code = status.HTTP_404_NOT_FOUND
