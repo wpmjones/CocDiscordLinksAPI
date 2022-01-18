@@ -96,7 +96,7 @@ Invalid tag: 400 Bad Request
 No records: 404 Not Found  
 
 ### Retrieving Multiples in Batch
-GET - http://cocdiscord.link/batch
+POST - http://cocdiscord.link/batch
 
 *Note: This payload can take both DiscordIds and Player Tags both, and they can be mix-and-matched, as in the example below:*
 
