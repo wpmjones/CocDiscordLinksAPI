@@ -98,6 +98,7 @@ async def get_links(tag_or_id: str, response: Response, authorization: Optional[
         tags.append(player_tag)
     else:
         ids.append(int(tag_or_id))
+    logger.info(len(tags))
     pairs = []
     tag_sql = "SELECT playertag, discordid FROM coc_discord_links WHERE playertag = any($1::text[])"
     id_sql = "SELECT playertag, discordid FROM coc_discord_links WHERE discordid = any($1::text[])"
