@@ -89,28 +89,28 @@ async def get_links(tag_or_id: str, response: Response, authorization: Optional[
         return {"Error message": "Token is invalid"}
     conn = await asyncpg.connect(dsn=creds.pg)
     tags = []
-    try:
-        # Try and convert input to int
-        # If successful, it's a Discord ID
-        discord_id = int(tag_or_id)
-        sql = "SELECT playertag FROM coc_discord_links WHERE discordid = $1"
-        fetch = await conn.fetch(sql, discord_id)
-        for row in fetch:
-            tags.append({"playerTag": row[0], "discordId": str(discord_id)})
-    except ValueError:
-        # If it fails, it's a player tag
+    ids = []
+    if re.match(tag_validator, tag_or_id):
         if tag_or_id.startswith("#"):
             player_tag = tag_or_id.upper()
         else:
             player_tag = f"#{tag_or_id.upper()}"
-        if not tag_validator.match(player_tag):
-            response.status_code = status.HTTP_400_BAD_REQUEST
-            return {"Error message": "Not a valid player tag."}
-        sql = "SELECT discordid FROM coc_discord_links WHERE playertag = $1"
-        discord_id = await conn.fetchval(sql, player_tag)
-        tags.append({"playerTag": player_tag, "discordId": str(discord_id)})
+        tags.append(player_tag)
+    else:
+        ids.append(int(tag_or_id))
+    pairs = []
+    tag_sql = "SELECT playertag, discordid FROM coc_discord_links WHERE playertag = any($1::text[])"
+    id_sql = "SELECT playertag, discordid FROM coc_discord_links WHERE discordid = any($1::text[])"
+    # handle player tags in list
+    fetch = await conn.fetch(tag_sql, tags)
+    for row in fetch:
+        pairs.append({"playerTag": row[0], "discordid": str(row[1])})
+    # handle Discord IDs
+    fetch = await conn.fetch(id_sql, ids)
+    for row in fetch:
+        pairs.append({"playerTag": row[0], "discordid": str(row[1])})
     await conn.close()
-    return tags
+    return pairs
 
 
 @app.post("/batch")
