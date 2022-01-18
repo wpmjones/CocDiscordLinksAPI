@@ -132,7 +132,7 @@ async def get_batch(user_input: list, response: Response, authorization: Optiona
             ids.append(int(tag_or_id))
     pairs = []
     tag_sql = "SELECT playertag, discordid FROM coc_discord_links WHERE playertag = any($1::text[])"
-    id_sql = "SELECT playertag, discordid FROM coc_discord_links WHERE discordid = any($1::text[])"
+    id_sql = "SELECT playertag, discordid FROM coc_discord_links WHERE discordid = any($1::bigint[])"
     # handle player tags in list
     fetch = await conn.fetch(tag_sql, tags)
     for row in fetch:
