@@ -89,16 +89,47 @@ async def get_links(tag_or_id: str, response: Response, authorization: Optional[
         return {"Error message": "Token is invalid"}
     conn = await asyncpg.connect(dsn=creds.pg)
     tags = []
-    ids = []
-    if re.match(tag_validator, tag_or_id):
+    try:
+        # Try and convert input to int
+        # If successful, it's a Discord ID
+        discord_id = int(tag_or_id)
+        sql = "SELECT playertag FROM coc_discord_links WHERE discordid = $1"
+        fetch = await conn.fetch(sql, discord_id)
+        for row in fetch:
+            tags.append({"playerTag": row[0], "discordId": str(discord_id)})
+    except ValueError:
+        # If it fails, it's a player tag
         if tag_or_id.startswith("#"):
             player_tag = tag_or_id.upper()
         else:
             player_tag = f"#{tag_or_id.upper()}"
-        tags.append(player_tag)
-    else:
-        ids.append(int(tag_or_id))
-    logger.info(len(tags))
+        if not tag_validator.match(player_tag):
+            response.status_code = status.HTTP_400_BAD_REQUEST
+            return {"Error message": "Not a valid player tag."}
+        sql = "SELECT discordid FROM coc_discord_links WHERE playertag = $1"
+        discord_id = await conn.fetchval(sql, player_tag)
+        tags.append({"playerTag": player_tag, "discordId": str(discord_id)})
+    await conn.close()
+    return tags
+
+
+@app.post("/batch")
+async def get_batch(user_input: list, response: Response, authorization: Optional[str] = Header(None)):
+    if not check_token(authorization[7:]):
+        response.status_code = status.HTTP_401_UNAUTHORIZED
+        return {"Error message": "Token is invalid"}
+    conn = await asyncpg.connect(dsn=creds.pg)
+    tags = []
+    ids = []
+    for tag_or_id in user_input:
+        if re.match(tag_validator, tag_or_id):
+            if tag_or_id.startswith("#"):
+                player_tag = tag_or_id.upper()
+            else:
+                player_tag = f"#{tag_or_id.upper()}"
+            tags.append(player_tag)
+        else:
+            ids.append(int(tag_or_id))
     pairs = []
     tag_sql = "SELECT playertag, discordid FROM coc_discord_links WHERE playertag = any($1::text[])"
     id_sql = "SELECT playertag, discordid FROM coc_discord_links WHERE discordid = any($1::text[])"
@@ -112,42 +143,6 @@ async def get_links(tag_or_id: str, response: Response, authorization: Optional[
         pairs.append({"playerTag": row[0], "discordid": str(row[1])})
     await conn.close()
     return pairs
-
-
-@app.post("/batch")
-async def get_batch(user_input: list, response: Response, authorization: Optional[str] = Header(None)):
-    if not check_token(authorization[7:]):
-        response.status_code = status.HTTP_401_UNAUTHORIZED
-        return {"Error message": "Token is invalid"}
-    conn = await asyncpg.connect(dsn=creds.pg)
-    tags = []
-    for item in user_input:
-        try:
-            # Try and convert input to int
-            # If successful, it's a Discord ID
-            discord_id = int(item)
-            sql = "SELECT playertag FROM coc_discord_links WHERE discordid = $1"
-            fetch = await conn.fetch(sql, discord_id)
-            for row in fetch:
-                tags.append({"playerTag": row[0], "discordId": str(discord_id)})
-        except ValueError:
-            # If it fails, it's a player tag
-            if item.startswith("#"):
-                player_tag = item.upper()
-            else:
-                player_tag = f"#{item.upper()}"
-            if not tag_validator.match(player_tag):
-                response.status_code = status.HTTP_400_BAD_REQUEST
-                return {"Error message": "Not a valid player tag."}
-            sql = "SELECT discordid FROM coc_discord_links WHERE playertag = $1"
-            discord_id = await conn.fetchval(sql, player_tag)
-            if discord_id:
-                tags.append({"playerTag": player_tag, "discordId": str(discord_id)})
-    await conn.close()
-    if len(tags) == 0:
-        response.status_code = status.HTTP_404_NOT_FOUND
-        return {"Error message": "No matches found"}
-    return tags
 
 
 @app.post("/links", status_code=status.HTTP_200_OK)
