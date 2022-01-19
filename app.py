@@ -46,6 +46,11 @@ def check_token(token):
         return False
 
 
+@conn.on_init
+async def initialization(db):
+    await db.execute("SELECT 1")
+
+
 @app.get("/")
 async def index():
     return {"message": "Hello world!"}
