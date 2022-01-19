@@ -22,11 +22,12 @@ class Link(BaseModel):
 class User(BaseModel):
     username: str
     password: str
+    user_id: int = None
     expiry: float = None
 
 
-def get_jwt(username, expires):
-    payload = {"username": username, "exp": expires}
+def get_jwt(user_id, expires):
+    payload = {"user_id": user_id, "exp": expires}
     return jwt.encode(payload, creds.jwt_key, algorithm="HS256")
 
 
@@ -37,19 +38,9 @@ def decode_jwt(token):
 
 def check_token(token):
     try:
-        logger.info("Checking token")
         jwt.decode(token, creds.jwt_key, algorithms="HS256")
-        logger.info("Token passed")
         return True
     except jwt.ExpiredSignatureError:
-        logger.info("Token failed")
-        return False
-
-
-def check_expiry(expiry: float):
-    if expiry > time.time():
-        return True
-    else:
         return False
 
 
@@ -62,27 +53,16 @@ async def index():
 async def login(user: User, response: Response):
     logger.info(f"Login attempt by: {user.username}")
     conn = await asyncpg.connect(dsn=creds.pg)
-    sql = "SELECT user_id, expiry FROM coc_discord_users WHERE username = $1 and passwd = $2 and approved = True"
-    row = await conn.fetchrow(sql, user.username, user.password)
-    if not row:
+    sql = "SELECT user_id FROM coc_discord_users WHERE username = $1 and passwd = $2 and approved = True"
+    user.user_id = await conn.fetchval(sql, user.username, user.password)
+    if not user.user_id:
         logger.warning(f"Login attempt by {user.username} failed. Password provided: {user.password}")
         response.status_code = status.HTTP_401_UNAUTHORIZED
         return {"Error message": "Not a valid user/password combination."}
-    if row[1]:
-        # value exists in db, test for expiration
-        user.expiry = row[1]
-        if check_expiry(user.expiry):
-            # existing token still valid, send to user
-            logger.info("Existing valid token")
-            token = get_jwt(user.username, user.expiry)
-            return {"token": token}
-    # either no token exists or it has expired
-    logger.info(f"Creating new token for {user.username}")
-    user.expiry = time.time() + 72.0  # two hours
-    sql = "UPDATE coc_discord_users SET expiry = $1 WHERE user_id = $2"
-    await conn.execute(sql, user.expiry, row['user_id'])
-    token = get_jwt(user.username, user.expiry)
-    return {"token": token}
+    else:
+        user.expiry = time.time() + 7200.0  # two hours
+        token = get_jwt(user.user_id, user.expiry)
+        return {"token": token}
 
 
 @app.get("/links/{tag_or_id}")
@@ -170,11 +150,8 @@ async def add_link(link: Link, response: Response, authorization: Optional[str] 
         response.status_code = status.HTTP_400_BAD_REQUEST
     # Logging
     jwt_payload = decode_jwt(authorization[7:])
-    username = jwt_payload['username']
-    sql = "SELECT user_id FROM coc_discord_users WHERE username = $1"
-    user_id = await conn.fetchval(sql, username)
     sql = "INSERT INTO coc_discord_log (user_id, activity, playertag) VALUES ($1, $2, $3)"
-    await conn.execute(sql, user_id, "ADD", link.playerTag)
+    await conn.execute(sql, jwt_payload['user_id'], "ADD", link.playerTag)
     await conn.close()
     return
 
@@ -198,10 +175,7 @@ async def delete_link(tag: str, response: Response, authorization: Optional[str]
     await conn.execute(sql, player_tag)
     # Logging
     jwt_payload = decode_jwt(authorization[7:])
-    username = jwt_payload['username']
-    sql = "SELECT user_id FROM coc_discord_users WHERE username = $1"
-    user_id = await conn.fetchval(sql, username)
     sql = "INSERT INTO coc_discord_log (user_id, activity, playertag) VALUES ($1, $2, $3)"
-    await conn.execute(sql, user_id, "DELETE", player_tag)
+    await conn.execute(sql, jwt_payload['user_id'], "DELETE", player_tag)
     await conn.close()
     return
