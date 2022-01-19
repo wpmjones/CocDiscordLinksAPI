@@ -5,14 +5,15 @@ import re
 import time
 
 from fastapi import FastAPI, Header, Response, status
+from fastapi_asyncpg import configure_asyncpg
 from loguru import logger
 from pydantic import BaseModel
 from typing import Optional
 
 app = FastAPI()
+conn = configure_asyncpg(app, creds.pg)
 
 tag_validator = re.compile("^#?[PYLQGRJCUV0289]+$")
-conn = await asyncpg.connect(dsn=creds.pg)
 
 
 class Link(BaseModel):
