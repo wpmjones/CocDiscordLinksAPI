@@ -12,6 +12,7 @@ from typing import Optional
 app = FastAPI()
 
 tag_validator = re.compile("^#?[PYLQGRJCUV0289]+$")
+conn = await asyncpg.connect(dsn=creds.pg)
 
 
 class Link(BaseModel):
@@ -52,7 +53,6 @@ async def index():
 @app.post("/login")
 async def login(user: User, response: Response):
     logger.info(f"Login attempt by: {user.username}")
-    conn = await asyncpg.connect(dsn=creds.pg)
     sql = "SELECT user_id FROM coc_discord_users WHERE username = $1 and passwd = $2 and approved = True"
     user.user_id = await conn.fetchval(sql, user.username, user.password)
     if not user.user_id:
@@ -71,7 +71,6 @@ async def get_links(tag_or_id: str, response: Response, authorization: Optional[
     if not check_token(authorization[7:]):
         response.status_code = status.HTTP_401_UNAUTHORIZED
         return {"Error message": "Token is invalid"}
-    conn = await asyncpg.connect(dsn=creds.pg)
     tags = []
     try:
         # Try and convert input to int
@@ -102,7 +101,6 @@ async def get_batch(user_input: list, response: Response, authorization: Optiona
     if not check_token(authorization[7:]):
         response.status_code = status.HTTP_401_UNAUTHORIZED
         return {"Error message": "Token is invalid"}
-    conn = await asyncpg.connect(dsn=creds.pg)
     tags = []
     ids = []
     for tag_or_id in user_input:
@@ -141,7 +139,6 @@ async def add_link(link: Link, response: Response, authorization: Optional[str] 
     if not tag_validator.match(link.playerTag):
         response.status_code = status.HTTP_400_BAD_REQUEST
         return {"Error message": "Not a valid player tag."}
-    conn = await asyncpg.connect(dsn=creds.pg)
     sql = "INSERT INTO coc_discord_links (playertag, discordid) VALUES ($1, $2)"
     try:
         await conn.execute(sql, link.playerTag, link.discordId)
@@ -154,7 +151,7 @@ async def add_link(link: Link, response: Response, authorization: Optional[str] 
     sql = "INSERT INTO coc_discord_log (user_id, activity, playertag, discordid) VALUES ($1, $2, $3, $4)"
     await conn.execute(sql, jwt_payload['user_id'], "ADD", link.playerTag, link.discordId)
     await conn.close()
-    return Response(status_code=status.HTTP_200_OK)
+    return {}
 
 
 @app.delete("/links/{tag}")
@@ -162,7 +159,6 @@ async def delete_link(tag: str, response: Response, authorization: Optional[str]
     if not check_token(authorization[7:]):
         response.status_code = status.HTTP_401_UNAUTHORIZED
         return "Token is invalid"
-    conn = await asyncpg.connect(dsn=creds.pg)
     if tag.startswith("#"):
         player_tag = tag.upper()
     else:
