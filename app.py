@@ -78,7 +78,7 @@ async def login(user: User, response: Response):
             return {"token": token}
     # either no token exists or it has expired
     logger.info(f"Creating new token for {user.username}")
-    user.expiry = time.time() + 7200.0  # two hours
+    user.expiry = time.time() + 72.0  # two hours
     sql = "UPDATE coc_discord_users SET expiry = $1 WHERE user_id = $2"
     await conn.execute(sql, user.expiry, row['user_id'])
     token = get_jwt(user.username, user.expiry)
