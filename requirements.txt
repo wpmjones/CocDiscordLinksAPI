@@ -1,5 +1,7 @@
 asyncpg>=0.22.0
 fastapi>=0.71.0
+fastapi_asyncpg
 loguru>=0.5.3
 pydantic>=1.9.0
 uvicorn
+PyJWT>=1.7.1
