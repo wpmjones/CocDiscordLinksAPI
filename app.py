@@ -48,6 +48,7 @@ def check_token(token):
 
 @conn.on_init
 async def initialization(db):
+    # fastapi_asyncpg seems to freak out if you don't do some kind of initialization
     await db.execute("SELECT 1")
 
 
@@ -60,12 +61,13 @@ async def index():
 async def login(user: User, response: Response):
     logger.info(f"Login attempt by: {user.username}")
     sql = "SELECT user_id FROM coc_discord_users WHERE username = $1 and passwd = $2 and approved = True"
-    user.user_id = await conn.fetchval(sql, user.username, user.password)
-    if not user.user_id:
+    row = await conn.fetchrow(sql, user.username, user.password)
+    if not row:
         logger.warning(f"Login attempt by {user.username} failed. Password provided: {user.password}")
         response.status_code = status.HTTP_401_UNAUTHORIZED
         return {"Error message": "Not a valid user/password combination."}
     else:
+        user.user_id = row[0]
         logger.info(f"Login by {user.username} successful.")
         user.expiry = time.time() + 7200.0  # two hours
         token = get_jwt(user.user_id, user.expiry)
