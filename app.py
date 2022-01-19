@@ -74,7 +74,10 @@ async def login(user: User, response: Response, conn=Depends(db.connection)):
 
 
 @app.get("/links/{tag_or_id}")
-async def get_links(tag_or_id: str, response: Response, authorization: Optional[str] = Header(None)):
+async def get_links(tag_or_id: str,
+                    response: Response,
+                    authorization: Optional[str] = Header(None),
+                    conn=Depends(db.connection)):
     if not check_token(authorization[7:]):
         response.status_code = status.HTTP_401_UNAUTHORIZED
         return {"Error message": "Token is invalid"}
@@ -104,7 +107,10 @@ async def get_links(tag_or_id: str, response: Response, authorization: Optional[
 
 
 @app.post("/batch")
-async def get_batch(user_input: list, response: Response, authorization: Optional[str] = Header(None)):
+async def get_batch(user_input: list,
+                    response: Response,
+                    authorization: Optional[str] = Header(None),
+                    conn=Depends(db.connection)):
     if not check_token(authorization[7:]):
         response.status_code = status.HTTP_401_UNAUTHORIZED
         return {"Error message": "Token is invalid"}
@@ -139,7 +145,10 @@ async def get_batch(user_input: list, response: Response, authorization: Optiona
 
 
 @app.post("/links", status_code=status.HTTP_200_OK)
-async def add_link(link: Link, response: Response, authorization: Optional[str] = Header(None)):
+async def add_link(link: Link,
+                   response: Response,
+                   authorization: Optional[str] = Header(None),
+                   conn=Depends(db.connection)):
     if not check_token(authorization[7:]):
         response.status_code = status.HTTP_401_UNAUTHORIZED
         return "Token is invalid"
@@ -162,7 +171,10 @@ async def add_link(link: Link, response: Response, authorization: Optional[str] 
 
 
 @app.delete("/links/{tag}")
-async def delete_link(tag: str, response: Response, authorization: Optional[str] = Header(None)):
+async def delete_link(tag: str,
+                      response: Response,
+                      authorization: Optional[str] = Header(None),
+                      conn=Depends(db.connection)):
     if not check_token(authorization[7:]):
         response.status_code = status.HTTP_401_UNAUTHORIZED
         return "Token is invalid"
