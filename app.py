@@ -154,7 +154,7 @@ async def add_link(link: Link, response: Response, authorization: Optional[str] 
     sql = "INSERT INTO coc_discord_log (user_id, activity, playertag, discordid) VALUES ($1, $2, $3, $4)"
     await conn.execute(sql, jwt_payload['user_id'], "ADD", link.playerTag, link.discordId)
     await conn.close()
-    return
+    return Response(status_code=status.HTTP_200_OK)
 
 
 @app.delete("/links/{tag}")
@@ -179,4 +179,4 @@ async def delete_link(tag: str, response: Response, authorization: Optional[str]
     sql = "INSERT INTO coc_discord_log (user_id, activity, playertag, discordid) VALUES ($1, $2, $3, $4)"
     await conn.execute(sql, jwt_payload['user_id'], "DELETE", player_tag, discord_id)
     await conn.close()
-    return
+    return {}
