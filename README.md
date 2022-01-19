@@ -51,7 +51,7 @@ var tokenExpireTime = DateTimeOffset.FromUnixTimeSeconds(Convert.ToUInt32(jwt["e
 import jwt
 token = "23jl2k3jh23jKLKk3lh2Kl.A5D46d2312eFealkjkl3Jkl.x923laslkjlKLJlk32lkJlk12jKl3lkjKLJKl1355a"
 decoded = jwt.decode(token, options={"verify_signature": False})
-print(decoded['expiry']) 
+print(decoded['exp']) 
 ```
 
 ### Retrieving a Link by Player Tag
