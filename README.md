@@ -8,7 +8,7 @@ This is a REST-based service, hosted in Python. It requires a username/password 
 ## Using the Service
 
 ### Authentication
-POST - http://cocdiscord.link/login
+POST - https://cocdiscord.link/login
 
 Payload Example:
 ```json
@@ -55,14 +55,14 @@ print(decoded['expiry'])
 ```
 
 ### Retrieving a Link by Player Tag
-GET - http://cocdiscord.link/links/{tag}
+GET - https://cocdiscord.link/links/{tag}
 
 *Note: You do not need to include the # in the query, but if you do, be sure to encode it to %23*
 
 Example(s):
 ```
-http://cocdiscord.link/links/RQ33GCCG (no #)
-http://cocdiscord.link/links/%23RQ33GCCG (# is encoded)
+https://cocdiscord.link/links/RQ33GCCG (no #)
+https://cocdiscord.link/links/%23RQ33GCCG (# is encoded)
 ```
 Returns:
 ```json
@@ -75,11 +75,11 @@ Returns:
 ```
 
 ### Retrieving a Link by DiscordId
-GET - http://cocdiscord.link/links/{id}
+GET - https://cocdiscord.link/links/{id}
 
 Example(s):
 ```
-http://cocdiscord.link/links/658256846652301451
+https://cocdiscord.link/links/658256846652301451
 ```
 Returns:
 ```json
@@ -96,7 +96,7 @@ Invalid tag: 400 Bad Request
 No records: 404 Not Found  
 
 ### Retrieving Multiples in Batch
-POST - http://cocdiscord.link/batch
+POST - https://cocdiscord.link/batch
 
 *Note: This payload can take both DiscordIds and Player Tags both, and they can be mix-and-matched, as in the example below:*
 
@@ -128,7 +128,7 @@ Invalid tag: 400 Bad Request
 No records: 404 Not Found
 
 ### Adding a New Link
-POST - http://cocdiscord.link/links
+POST - https://cocdiscord.link/links
 
 Payload Example: 
 ```json
@@ -144,14 +144,14 @@ Invalid tag: 400 Bad Request
 Player already exists: 409 Conflict
 
 ### Deleting an Existing Link
-DELETE - http://cocdiscord.link/links/{tag}
+DELETE - https://cocdiscord.link/links/{tag}
 
 *Note: This only works on Clash of Clans Player Tags*
 
 Example(s):
 ```
-http://cocdiscord.link/links/RQ33GCCG (no #)
-http://cocdiscord.link/links/%23RQ33GCCG (# is encoded)
+https://cocdiscord.link/links/RQ33GCCG (no #)
+https://cocdiscord.link/links/%23RQ33GCCG (# is encoded)
 ```
 
 **Return Values:**  
