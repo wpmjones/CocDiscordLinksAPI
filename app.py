@@ -4,14 +4,14 @@ import jwt
 import re
 import time
 
-from fastapi import FastAPI, Header, Response, status
+from fastapi import FastAPI, Header, Response, status, Depends
 from fastapi_asyncpg import configure_asyncpg
 from loguru import logger
 from pydantic import BaseModel
 from typing import Optional
 
 app = FastAPI()
-conn = configure_asyncpg(app, creds.pg)
+db = configure_asyncpg(app, creds.pg)
 
 tag_validator = re.compile("^#?[PYLQGRJCUV0289]+$")
 
@@ -46,10 +46,10 @@ def check_token(token):
         return False
 
 
-@conn.on_init
-async def initialization(db):
+@db.on_init
+async def initialization(conn):
     # fastapi_asyncpg seems to freak out if you don't do some kind of initialization
-    await db.execute("SELECT 1")
+    await conn.execute("SELECT 1")
 
 
 @app.get("/")
@@ -58,16 +58,15 @@ async def index():
 
 
 @app.post("/login")
-async def login(user: User, response: Response):
+async def login(user: User, response: Response, conn=Depends(db.connection)):
     logger.info(f"Login attempt by: {user.username}")
     sql = "SELECT user_id FROM coc_discord_users WHERE username = $1 and passwd = $2 and approved = True"
-    row = await conn.fetchrow(sql, user.username, user.password)
-    if not row:
+    user.user_id = await conn.fetchval(sql, user.username, user.password)
+    if not user.user_id:
         logger.warning(f"Login attempt by {user.username} failed. Password provided: {user.password}")
         response.status_code = status.HTTP_401_UNAUTHORIZED
         return {"Error message": "Not a valid user/password combination."}
     else:
-        user.user_id = row[0]
         logger.info(f"Login by {user.username} successful.")
         user.expiry = time.time() + 7200.0  # two hours
         token = get_jwt(user.user_id, user.expiry)
