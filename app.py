@@ -151,7 +151,7 @@ async def add_link(link: Link,
                    conn=Depends(db.connection)):
     if not check_token(authorization[7:]):
         response.status_code = status.HTTP_401_UNAUTHORIZED
-        return "Token is invalid"
+        return {"Error message": "Token is invalid"}
     if not tag_validator.match(link.playerTag):
         response.status_code = status.HTTP_400_BAD_REQUEST
         return {"Error message": "Not a valid player tag."}
@@ -177,7 +177,7 @@ async def delete_link(tag: str,
                       conn=Depends(db.connection)):
     if not check_token(authorization[7:]):
         response.status_code = status.HTTP_401_UNAUTHORIZED
-        return "Token is invalid"
+        return {"Error message": "Token is invalid"}
     if tag.startswith("#"):
         player_tag = tag.upper()
     else:
@@ -186,7 +186,7 @@ async def delete_link(tag: str,
     discord_id = await conn.fetchval(sql, player_tag)
     if not discord_id:
         response.status_code = status.HTTP_404_NOT_FOUND
-        return "Player tag not found in database"
+        return {"Error message": "Player tag not found in database"}
     sql = "DELETE FROM coc_discord_links WHERE playertag = $1"
     await conn.execute(sql, player_tag)
     # Logging
