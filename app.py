@@ -122,11 +122,11 @@ async def get_batch(user_input: list, response: Response, authorization: Optiona
     # handle player tags in list
     fetch = await conn.fetch(tag_sql, tags)
     for row in fetch:
-        pairs.append({"playerTag": row[0], "discordid": str(row[1])})
+        pairs.append({"playerTag": row[0], "discordId": str(row[1])})
     # handle Discord IDs
     fetch = await conn.fetch(id_sql, ids)
     for row in fetch:
-        pairs.append({"playerTag": row[0], "discordid": str(row[1])})
+        pairs.append({"playerTag": row[0], "discordId": str(row[1])})
     await conn.close()
     return pairs
 
