@@ -60,6 +60,7 @@ async def login(user: User, response: Response):
         response.status_code = status.HTTP_401_UNAUTHORIZED
         return {"Error message": "Not a valid user/password combination."}
     else:
+        logger.info(f"Login by {user.username} successful.")
         user.expiry = time.time() + 7200.0  # two hours
         token = get_jwt(user.user_id, user.expiry)
         return {"token": token}
@@ -150,8 +151,8 @@ async def add_link(link: Link, response: Response, authorization: Optional[str] 
         response.status_code = status.HTTP_400_BAD_REQUEST
     # Logging
     jwt_payload = decode_jwt(authorization[7:])
-    sql = "INSERT INTO coc_discord_log (user_id, activity, playertag) VALUES ($1, $2, $3)"
-    await conn.execute(sql, jwt_payload['user_id'], "ADD", link.playerTag)
+    sql = "INSERT INTO coc_discord_log (user_id, activity, playertag, discordid) VALUES ($1, $2, $3, $4)"
+    await conn.execute(sql, jwt_payload['user_id'], "ADD", link.playerTag, link.discordId)
     await conn.close()
     return
 
@@ -167,15 +168,15 @@ async def delete_link(tag: str, response: Response, authorization: Optional[str]
     else:
         player_tag = f"#{tag.upper()}"
     sql = "SELECT discordid FROM coc_discord_links WHERE playertag = $1"
-    fetch = await conn.fetch(sql, player_tag)
-    if len(fetch) == 0:
+    discord_id = await conn.fetchval(sql, player_tag)
+    if not discord_id:
         response.status_code = status.HTTP_404_NOT_FOUND
         return "Player tag not found in database"
     sql = "DELETE FROM coc_discord_links WHERE playertag = $1"
     await conn.execute(sql, player_tag)
     # Logging
     jwt_payload = decode_jwt(authorization[7:])
-    sql = "INSERT INTO coc_discord_log (user_id, activity, playertag) VALUES ($1, $2, $3)"
-    await conn.execute(sql, jwt_payload['user_id'], "DELETE", player_tag)
+    sql = "INSERT INTO coc_discord_log (user_id, activity, playertag, discordid) VALUES ($1, $2, $3, $4)"
+    await conn.execute(sql, jwt_payload['user_id'], "DELETE", player_tag, discord_id)
     await conn.close()
     return
