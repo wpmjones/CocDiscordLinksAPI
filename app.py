@@ -174,6 +174,7 @@ async def add_link(link: Link,
     return {"message": "CONFLICT" if response.status_code == 409 else "BAD_REQUEST" if response.status_code == 400 else "OK"}
 
 
+
 @app.delete("/links/{tag}", response_model=Message, responses={400: {"model": Message}, 401: {"model": Message}})
 async def delete_link(tag: str,
                       response: Response,
@@ -197,4 +198,5 @@ async def delete_link(tag: str,
     jwt_payload = decode_jwt(authorization[7:])
     sql = "INSERT INTO coc_discord_log (user_id, activity, playertag, discordid) VALUES ($1, $2, $3, $4)"
     await conn.execute(sql, jwt_payload['user_id'], "DELETE", player_tag, discord_id)
+
     return {"message": "OK"}
