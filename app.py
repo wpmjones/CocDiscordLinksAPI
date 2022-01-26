@@ -102,7 +102,6 @@ async def get_links(tag_or_id: str,
         sql = "SELECT discordid FROM coc_discord_links WHERE playertag = $1"
         discord_id = await conn.fetchval(sql, player_tag)
         tags.append({"playerTag": player_tag, "discordId": str(discord_id)})
-    await conn.close()
     return tags
 
 
@@ -140,7 +139,6 @@ async def get_batch(user_input: list,
     fetch = await conn.fetch(id_sql, ids)
     for row in fetch:
         pairs.append({"playerTag": row[0], "discordId": str(row[1])})
-    await conn.close()
     return pairs
 
 
@@ -166,7 +164,6 @@ async def add_link(link: Link,
     jwt_payload = decode_jwt(authorization[7:])
     sql = "INSERT INTO coc_discord_log (user_id, activity, playertag, discordid) VALUES ($1, $2, $3, $4)"
     await conn.execute(sql, jwt_payload['user_id'], "ADD", link.playerTag, link.discordId)
-    await conn.close()
     return {}
 
 
@@ -193,5 +190,4 @@ async def delete_link(tag: str,
     jwt_payload = decode_jwt(authorization[7:])
     sql = "INSERT INTO coc_discord_log (user_id, activity, playertag, discordid) VALUES ($1, $2, $3, $4)"
     await conn.execute(sql, jwt_payload['user_id'], "DELETE", player_tag, discord_id)
-    await conn.close()
     return {}
