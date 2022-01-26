@@ -67,7 +67,7 @@ async def login(user: User, response: Response, conn=Depends(db.connection)):
     if not user_id:
         logger.warning(f"Login attempt by {user.username} failed. Password provided: {user.password}")
         response.status_code = status.HTTP_401_UNAUTHORIZED
-        return {"message": "Not a valid user/password combination"}
+        return {"message": "Not a valid username/password combination"}
     else:
         logger.info(f"Login by {user.username} successful.")
         token = get_jwt(user.username, user_id)
@@ -82,7 +82,7 @@ async def get_links(tag_or_id: str,
     jwt_payload = decode_jwt(authorization)
     if not jwt_payload:
         response.status_code = status.HTTP_401_UNAUTHORIZED
-        return {"message": "Token is invalid"}
+        return {"message": "Invalid authorization"}
     tags = []
     try:
         # Try and convert input to int
@@ -115,7 +115,7 @@ async def get_batch(user_input: list,
     jwt_payload = decode_jwt(authorization)
     if not jwt_payload:
         response.status_code = status.HTTP_401_UNAUTHORIZED
-        return {"message": "Token is invalid"}
+        return {"message": "Invalid authorization"}
     tags = []
     ids = []
     for tag_or_id in user_input:
@@ -156,7 +156,7 @@ async def add_link(link: Link,
     jwt_payload = decode_jwt(authorization)
     if not jwt_payload:
         response.status_code = status.HTTP_401_UNAUTHORIZED
-        return {"message": "Token is invalid"}
+        return {"message": "Invalid authorization"}
     if not tag_validator.match(link.playerTag):
         response.status_code = status.HTTP_400_BAD_REQUEST
         return {"message": "Not a valid player tag"}
@@ -176,7 +176,7 @@ async def add_link(link: Link,
     return {"message": "OK"}
 
 
-@app.delete("/links/{tag}", responses={200: {"model": Message}, 400: {"model": Message}, 401: {"model": Message}})
+@app.delete("/links/{tag}", responses={200: {"model": Message}, 404: {"model": Message}, 401: {"model": Message}})
 async def delete_link(tag: str,
                       response: Response,
                       authorization: Optional[str] = Header(None),
@@ -184,7 +184,7 @@ async def delete_link(tag: str,
     jwt_payload = decode_jwt(authorization)
     if not jwt_payload:
         response.status_code = status.HTTP_401_UNAUTHORIZED
-        return {"message": "Token is invalid"}
+        return {"message": "Invalid authorization"}
     if tag.startswith("#"):
         player_tag = tag.upper()
     else:
