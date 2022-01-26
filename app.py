@@ -18,7 +18,7 @@ tag_validator = re.compile("^#?[PYLQGRJCUV0289]+$")
 
 class Link(BaseModel):
     playerTag: str
-    discordId: int
+    discordId: str
 
 
 class User(BaseModel):
@@ -34,22 +34,17 @@ class Token(BaseModel):
     token: str
 
 
-def get_jwt(user_id, expires):
-    payload = {"user_id": user_id, "exp": expires}
+def get_jwt(username, user_id):
+    payload = {"username": username, "user_id": user_id, "exp": time.time() + 7200.0}
     return jwt.encode(payload, creds.jwt_key, algorithm="HS256")
 
 
-def decode_jwt(token):
-    decoded = jwt.decode(token, creds.jwt_key, algorithms="HS256")
-    return decoded
-
-
-def check_token(token):
+def decode_jwt(authorization):
     try:
-        jwt.decode(token, creds.jwt_key, algorithms="HS256")
-        return True
+        decoded = jwt.decode(authorization[7:], creds.jwt_key, algorithms="HS256")
+        return decoded
     except:
-        return False
+        return None
 
 
 @db.on_init
@@ -63,9 +58,10 @@ async def index():
     return {"message": "Hello world!"}
 
 
-@app.post("/login", response_model=Token, responses={401: {"model": Message}})
+@app.post("/login", responses={200: {"model": Token}, 401: {"model": Message}})
 async def login(user: User, response: Response, conn=Depends(db.connection)):
     logger.info(f"Login attempt by: {user.username}")
+    print(user)
     sql = "SELECT user_id FROM coc_discord_users WHERE username = $1 and passwd = $2 and approved = True"
     user_id = await conn.fetchval(sql, user.username, user.password)
     if not user_id:
@@ -74,17 +70,17 @@ async def login(user: User, response: Response, conn=Depends(db.connection)):
         return {"message": "Not a valid user/password combination"}
     else:
         logger.info(f"Login by {user.username} successful.")
-        expiry = time.time() + 7200.0  # two hours
-        token = get_jwt(user_id, expiry)
+        token = get_jwt(user.username, user_id)
         return {"token": token}
 
 
-@app.get("/links/{tag_or_id}", response_model=List[Link], responses={400: {"model": Message}, 401: {"model": Message}})
+@app.get("/links/{tag_or_id}", responses={200: {"model": List[Link]}, 400: {"model": Message}, 401: {"model": Message}})
 async def get_links(tag_or_id: str,
                     response: Response,
                     authorization: Optional[str] = Header(None),
                     conn=Depends(db.connection)):
-    if not check_token(authorization[7:]):
+    jwt_payload = decode_jwt(authorization)
+    if not jwt_payload:
         response.status_code = status.HTTP_401_UNAUTHORIZED
         return {"message": "Token is invalid"}
     tags = []
@@ -111,12 +107,13 @@ async def get_links(tag_or_id: str,
     return tags
 
 
-@app.post("/batch", response_model=List[Link], responses={401: {"model": Message}})
+@app.post("/batch", responses={200: {"model": List[Link]}, 401: {"model": Message}})
 async def get_batch(user_input: list,
                     response: Response,
                     authorization: Optional[str] = Header(None),
                     conn=Depends(db.connection)):
-    if not check_token(authorization[7:]):
+    jwt_payload = decode_jwt(authorization)
+    if not jwt_payload:
         response.status_code = status.HTTP_401_UNAUTHORIZED
         return {"message": "Token is invalid"}
     tags = []
@@ -132,7 +129,7 @@ async def get_batch(user_input: list,
             try:
                 ids.append(int(tag_or_id))
             except ValueError:
-                # not a valid player tag or discord ID
+                # Not a valid Player tag or Discord ID
                 pass
     pairs = []
     tag_sql = "SELECT playertag, discordid FROM coc_discord_links WHERE playertag = any($1::text[])"
@@ -148,13 +145,16 @@ async def get_batch(user_input: list,
     return pairs
 
 
-@app.post("/links", response_model=Message,
-          responses={400: {"model": Message}, 401: {"model": Message}, 409: {"model": Message}})
+@app.post("/links",
+          responses={
+              200: {"model": Message}, 400: {"model": Message}, 401: {"model": Message}, 409: {"model": Message}
+          })
 async def add_link(link: Link,
                    response: Response,
                    authorization: Optional[str] = Header(None),
                    conn=Depends(db.connection)):
-    if not check_token(authorization[7:]):
+    jwt_payload = decode_jwt(authorization)
+    if not jwt_payload:
         response.status_code = status.HTTP_401_UNAUTHORIZED
         return {"message": "Token is invalid"}
     if not tag_validator.match(link.playerTag):
@@ -162,26 +162,27 @@ async def add_link(link: Link,
         return {"message": "Not a valid player tag"}
     sql = "INSERT INTO coc_discord_links (playertag, discordid) VALUES ($1, $2)"
     try:
-        await conn.execute(sql, link.playerTag, link.discordId)
-        # Logging
-        jwt_payload = decode_jwt(authorization[7:])
-        sql = "INSERT INTO coc_discord_log (user_id, activity, playertag, discordid) VALUES ($1, $2, $3, $4)"
-        await conn.execute(sql, jwt_payload['user_id'], "ADD", link.playerTag, link.discordId)
+        await conn.execute(sql, link.playerTag, int(link.discordId))
     except asyncpg.exceptions.UniqueViolationError:
         response.status_code = status.HTTP_409_CONFLICT
+        return {"message": "Player tag is already in the database"}
     except:
         response.status_code = status.HTTP_400_BAD_REQUEST
-    return {"message": "CONFLICT" if response.status_code == 409
-            else "BAD_REQUEST" if response.status_code == 400
-            else "OK"}
+        return {"message": "Unknown exception"}
+
+    # Logging
+    sql = "INSERT INTO coc_discord_log (user_id, activity, playertag, discordid) VALUES ($1, $2, $3, $4)"
+    await conn.execute(sql, jwt_payload['user_id'], "ADD", link.playerTag, int(link.discordId))
+    return {"message": "OK"}
 
 
-@app.delete("/links/{tag}", response_model=Message, responses={400: {"model": Message}, 401: {"model": Message}})
+@app.delete("/links/{tag}", responses={200: {"model": Message}, 400: {"model": Message}, 401: {"model": Message}})
 async def delete_link(tag: str,
                       response: Response,
                       authorization: Optional[str] = Header(None),
                       conn=Depends(db.connection)):
-    if not check_token(authorization[7:]):
+    jwt_payload = decode_jwt(authorization)
+    if not jwt_payload:
         response.status_code = status.HTTP_401_UNAUTHORIZED
         return {"message": "Token is invalid"}
     if tag.startswith("#"):
@@ -192,11 +193,11 @@ async def delete_link(tag: str,
     discord_id = await conn.fetchval(sql, player_tag)
     if not discord_id:
         response.status_code = status.HTTP_404_NOT_FOUND
-        return {"message": "Player tag not found in Database"}
+        return {"message": "Player tag not found in database"}
     sql = "DELETE FROM coc_discord_links WHERE playertag = $1"
     await conn.execute(sql, player_tag)
+    
     # Logging
-    jwt_payload = decode_jwt(authorization[7:])
     sql = "INSERT INTO coc_discord_log (user_id, activity, playertag, discordid) VALUES ($1, $2, $3, $4)"
     await conn.execute(sql, jwt_payload['user_id'], "DELETE", player_tag, discord_id)
     return {"message": "OK"}
