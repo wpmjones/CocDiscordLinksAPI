@@ -163,15 +163,17 @@ async def add_link(link: Link,
     sql = "INSERT INTO coc_discord_links (playertag, discordid) VALUES ($1, $2)"
     try:
         await conn.execute(sql, link.playerTag, link.discordId)
+        # Logging
+        jwt_payload = decode_jwt(authorization[7:])
+        sql = "INSERT INTO coc_discord_log (user_id, activity, playertag, discordid) VALUES ($1, $2, $3, $4)"
+        await conn.execute(sql, jwt_payload['user_id'], "ADD", link.playerTag, link.discordId)
     except asyncpg.exceptions.UniqueViolationError:
         response.status_code = status.HTTP_409_CONFLICT
     except:
         response.status_code = status.HTTP_400_BAD_REQUEST
-    # Logging
-    jwt_payload = decode_jwt(authorization[7:])
-    sql = "INSERT INTO coc_discord_log (user_id, activity, playertag, discordid) VALUES ($1, $2, $3, $4)"
-    await conn.execute(sql, jwt_payload['user_id'], "ADD", link.playerTag, link.discordId)
-    return {"message": "CONFLICT" if response.status_code == 409 else "BAD_REQUEST" if response.status_code == 400 else "OK"}
+    return {"message": "CONFLICT" if response.status_code == 409
+            else "BAD_REQUEST" if response.status_code == 400
+            else "OK"}
 
 
 @app.delete("/links/{tag}", response_model=Message, responses={400: {"model": Message}, 401: {"model": Message}})
