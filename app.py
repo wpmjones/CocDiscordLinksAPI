@@ -83,6 +83,9 @@ async def get_links(tag_or_id: str,
     if not jwt_payload:
         response.status_code = status.HTTP_401_UNAUTHORIZED
         return {"message": "Invalid authorization"}
+    # Logging
+    sql = "INSERT INTO coc_discord_log (user_id, activity) VALUES ($1, $2)"
+    await conn.execute(sql, jwt_payload['user_id'], "LINKS")
     tags = []
     try:
         # Try and convert input to int
@@ -116,6 +119,9 @@ async def get_batch(user_input: list,
     if not jwt_payload:
         response.status_code = status.HTTP_401_UNAUTHORIZED
         return {"message": "Invalid authorization"}
+    # Logging
+    sql = "INSERT INTO coc_discord_log (user_id, activity) VALUES ($1, $2)"
+    await conn.execute(sql, jwt_payload['user_id'], "BATCH")
     tags = []
     ids = []
     for tag_or_id in user_input:
