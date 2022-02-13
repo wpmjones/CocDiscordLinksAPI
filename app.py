@@ -168,6 +168,11 @@ async def add_link(link: Link,
         return {"message": "Not a valid player tag"}
     if not link.playerTag.startswith("#"):
         link.playerTag = f"#{link.playerTag}"
+    try:
+        discord_id = int(link.discordId)
+    except ValueError:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return {"message": "Not a valid Discord ID."}
     sql = "INSERT INTO coc_discord_links (playertag, discordid) VALUES ($1, $2)"
     try:
         await conn.execute(sql, link.playerTag, int(link.discordId))
