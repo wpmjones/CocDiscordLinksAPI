@@ -74,11 +74,21 @@ async def login(user: User, response: Response, conn=Depends(db.connection)):
         return {"token": token}
 
 
-@app.get("/links/{tag_or_id}", responses={200: {"model": List[Link]}, 400: {"model": Message}, 401: {"model": Message}})
-async def get_links(tag_or_id: str,
-                    response: Response,
-                    authorization: Optional[str] = Header(None),
-                    conn=Depends(db.connection)):
+@app.get(
+    "/links/{tag_or_id}",
+    responses={
+        200: {"model": List[Link]},
+        404: {"model": Message},
+        400: {"model": Message},
+        401: {"model": Message}
+    }
+)
+async def get_links(
+        tag_or_id: str,
+        response: Response,
+        authorization: Optional[str] = Header(None),
+        conn=Depends(db.connection)
+):
     jwt_payload = decode_jwt(authorization)
     if not jwt_payload:
         response.status_code = status.HTTP_401_UNAUTHORIZED
@@ -106,15 +116,20 @@ async def get_links(tag_or_id: str,
             return {"message": "Not a valid player tag"}
         sql = "SELECT discordid FROM coc_discord_links WHERE playertag = $1"
         discord_id = await conn.fetchval(sql, player_tag)
+        if not discord_id:
+            response.status_code = status.HTTP_404_NOT_FOUND
+            return {"message": "Link not found"}
         tags.append({"playerTag": player_tag, "discordId": str(discord_id)})
     return tags
 
 
 @app.post("/batch", responses={200: {"model": List[Link]}, 401: {"model": Message}})
-async def get_batch(user_input: list,
-                    response: Response,
-                    authorization: Optional[str] = Header(None),
-                    conn=Depends(db.connection)):
+async def get_batch(
+        user_input: list,
+        response: Response,
+        authorization: Optional[str] = Header(None),
+        conn=Depends(db.connection)
+):
     jwt_payload = decode_jwt(authorization)
     if not jwt_payload:
         response.status_code = status.HTTP_401_UNAUTHORIZED
@@ -151,14 +166,21 @@ async def get_batch(user_input: list,
     return pairs
 
 
-@app.post("/links",
-          responses={
-              200: {"model": Message}, 400: {"model": Message}, 401: {"model": Message}, 409: {"model": Message}
-          })
-async def add_link(link: Link,
-                   response: Response,
-                   authorization: Optional[str] = Header(None),
-                   conn=Depends(db.connection)):
+@app.post(
+    "/links",
+    responses={
+        200: {"model": Message},
+        400: {"model": Message},
+        401: {"model": Message},
+        409: {"model": Message}
+    }
+)
+async def add_link(
+        link: Link,
+        response: Response,
+        authorization: Optional[str] = Header(None),
+        conn=Depends(db.connection)
+):
     jwt_payload = decode_jwt(authorization)
     if not jwt_payload:
         response.status_code = status.HTTP_401_UNAUTHORIZED
@@ -190,10 +212,12 @@ async def add_link(link: Link,
 
 
 @app.delete("/links/{tag}", responses={200: {"model": Message}, 404: {"model": Message}, 401: {"model": Message}})
-async def delete_link(tag: str,
-                      response: Response,
-                      authorization: Optional[str] = Header(None),
-                      conn=Depends(db.connection)):
+async def delete_link(
+        tag: str,
+        response: Response,
+        authorization: Optional[str] = Header(None),
+        conn=Depends(db.connection)
+):
     jwt_payload = decode_jwt(authorization)
     if not jwt_payload:
         response.status_code = status.HTTP_401_UNAUTHORIZED
@@ -209,7 +233,7 @@ async def delete_link(tag: str,
         return {"message": "Player tag not found in database"}
     sql = "DELETE FROM coc_discord_links WHERE playertag = $1"
     await conn.execute(sql, player_tag)
-    
+
     # Logging
     sql = "INSERT INTO coc_discord_log (user_id, activity, playertag, discordid) VALUES ($1, $2, $3, $4)"
     await conn.execute(sql, jwt_payload['user_id'], "DELETE", player_tag, discord_id)
