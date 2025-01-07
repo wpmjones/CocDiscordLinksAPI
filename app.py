@@ -228,7 +228,7 @@ async def delete_link(
         player_tag = f"#{tag.upper()}"
     sql = "SELECT discordid FROM coc_discord_links WHERE playertag = $1"
     discord_id = await conn.fetchval(sql, player_tag)
-    if not discord_id:
+    if not discord_id and discord_id != 0:
         response.status_code = status.HTTP_404_NOT_FOUND
         return {"message": "Player tag not found in database"}
     sql = "DELETE FROM coc_discord_links WHERE playertag = $1"
